@@ -1,6 +1,5 @@
 // ASCII Art: https://www.patorjk.com/software/taag/ ("Big" Font)
 // OTA Update Code Shamelessly Stolen From: https://github.com/Jeija/esp32-softap-ota/tree/master/main
-// TEST COMMIT
 
 #include <stdio.h>
 #include <string.h>
