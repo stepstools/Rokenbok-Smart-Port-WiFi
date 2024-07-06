@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon" />
+    <title>Smart Port WiFi Adapter</title>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+            font-family: 'Arial';
+        }
+
+        body,
+        h1,
+        h2,
+        p,
+        ul {
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        h2 {
+            margin-top: 10px;
+            margin-bottom: 10px;
+            font-size: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            font-size: 50px;
+        }
+
+        #left-header {
+            background-color: #DB0017;
+            color: #ffffff;
+            width: fit-content;
+            padding-left: 15px;
+            padding-right: 15px;
+
+        }
+
+        #right-header {
+            background-color: #ffea05;
+            color: #003CC1;
+            text-shadow: 3px 3px 1px #000000;
+            width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+            font-size: 45px;
+            white-space: nowrap;
+            text-overflow: clip;
+            overflow: hidden;
+        }
+
+        nav {
+            background-color: #65A81E;
+            color: #fff;
+            text-align: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        nav a:hover {
+            background-color: #ddd;
+            color: black;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        ul li {
+            display: inline;
+            margin: 10px;
+            text-align: center;
+        }
+
+        .status_menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            text-align: center;
+            gap: 0px 60px;
+        }
+
+        .system-status,
+        .vehicle-status,
+        .controller-status {
+            display: flex;
+            flex-flow: column wrap;
+            align-items: center;
+        }
+
+        .system-status-flex {
+            display: flex;
+            flex-wrap: wrap;
+            width: auto;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        .vehicle-status-flex {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 400px;
+        }
+
+        .controller-status-flex {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 200px;
+            padding-left: 22px;
+            padding-right: 22px;
+        }
+
+        .WS,
+        .SP {
+            display: inline-block;
+            width: 90px;
+            height: 90px;
+            background-color: #ccc;
+            border-radius: 1px;
+            border: 5px solid white;
+            text-align: center;
+            line-height: 85px;
+            font-size: 40px;
+        }
+
+        .V1,
+        .V2,
+        .V3,
+        .V4,
+        .V5,
+        .V6,
+        .V7,
+        .V8,
+        .V9,
+        .V10,
+        .V11,
+        .V12,
+        .V13,
+        .V14,
+        .V15 {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border-radius: 1px;
+            text-align: center;
+            line-height: 40px;
+            font-size: 20px;
+            position: relative;
+            border: 5px solid white;
+        }
+
+        .text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .quarter {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 1;
+        }
+
+        .top-left {
+            top: 0;
+            left: 0;
+            background-color: #cccccc;
+        }
+
+        .top-right {
+            top: 0;
+            right: 0;
+            background-color: #cccccc;
+        }
+
+        .bottom-left {
+            bottom: 0;
+            left: 0;
+            background-color: #cccccc;
+        }
+
+        .bottom-right {
+            bottom: 0;
+            right: 0;
+            background-color: #cccccc;
+        }
+
+        .VC1,
+        .VC2,
+        .VC3,
+        .VC4,
+        .PC1,
+        .PC2,
+        .PC3,
+        .PC4 {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #ccc;
+            border-radius: 1px;
+            border: 5px solid white;
+            text-align: center;
+            line-height: 40px;
+            font-size: 20px;
+            outline-offset: -5px;
+        }
+
+
+        .eight_controller_container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            text-align: center;
+            gap: 0px 30px;
+            padding-bottom: 60px;
+        }
+
+        .controller-name-input {
+            font-family: Arial;
+            display: block;
+            text-align: center;
+            font-weight: bold;
+
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            font-size: 30px;
+
+            border: none;
+            background: transparent;
+        }
+
+        .controller_container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 100px 1fr 1fr 1fr;
+            /* Adjusted column widths */
+            grid-template-rows: 1fr 1fr 1fr 1fr;
+            gap: 5px 5px;
+            grid-template-areas:
+                'LT LT LT SEL RT RT RT'
+                '. U NAME NAME NAME BY .'
+                'L . R . BX . B'
+                '. D . CTR . A .';
+            justify-items: center;
+        }
+
+        .U {
+            grid-area: U;
+        }
+
+        .D {
+            grid-area: D;
+        }
+
+        .L {
+            grid-area: L;
+        }
+
+        .R {
+            grid-area: R;
+        }
+
+        .LT {
+            grid-area: LT;
+        }
+
+        .RT {
+            grid-area: RT;
+        }
+
+        .A {
+            grid-area: A;
+        }
+
+        .B {
+            grid-area: B;
+        }
+
+        .X {
+            grid-area: BX;
+        }
+
+        .Y {
+            grid-area: BY;
+        }
+
+        .SEL {
+            grid-area: SEL;
+        }
+
+        .NAME {
+            grid-area: NAME;
+        }
+
+        .CTR {
+            grid-area: CTR;
+        }
+
+        .CTRL1,
+        .CTRL2,
+        .CTRL3,
+        .CTRL4,
+        .CTRL5,
+        .CTRL6,
+        .CTRL7,
+        .CTRL8,
+        .CTRL9 {
+            display: none;
+            margin: 5px auto;
+        }
+
+        .U,
+        .D,
+        .L,
+        .R {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #ccc;
+            border-radius: 2px;
+            margin: 0px;
+            line-height: 40px;
+            font-size: 20px;
+        }
+
+        .A,
+        .B,
+        .X,
+        .Y {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #ccc;
+            border-radius: 50%;
+            margin: 0px;
+            line-height: 40px;
+            font-size: 20px;
+        }
+
+        .RT,
+        .LT {
+            display: inline-block;
+            width: 80px;
+            height: 25px;
+            background-color: #ccc;
+            border-radius: 2px;
+            margin-top: 7.5px;
+            margin-bottom: 7.5px;
+            line-height: 25px;
+            font-size: 20px;
+        }
+
+        .SEL,
+        .CTR {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 0px;
+            line-height: 40px;
+            font-size: 20px;
+        }
+
+        .CTR {
+            background-color: #ccc;
+        }
+
+        .NAME {
+            display: inline-block;
+            width: 190px;
+            height: 40px;
+            margin: 0px;
+            line-height: 40px;
+            font-size: 18px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        footer {
+            background-color: #003CC1;
+            color: #ffffff;
+            text-align: center;
+            font-size: 16px;
+            padding: 0.5em 0;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div id='left-header'>ROKENBOK</div>
+        <div id='right-header'><strong>Smart Port WiFi Adapter</strong></div>
+    </header>
+
+    <nav>
+        <div class='link-bar'>
+            <ul>
+                <li><a href='/'>Desktop</a></li>
+                <li><a href='mobile'>Mobile</a></li>
+                <li><a href='help'>Help</a></li>
+                <li><a href='admin'>Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class='status_menu'>
+        <div class='system-status'>
+            <h2>
+                <div class='system-status-text'>System Status</div>
+            </h2>
+            <div class='system-status-flex'>
+                <div class='WS'>WS</div>
+                <div class='SP'>SP</div>
+            </div>
+        </div>
+        <div class='vehicle-status'>
+            <h2>
+                <div class='vehicle-status-text'>Vehicle Status</div>
+            </h2>
+            <div class='vehicle-status-flex'>
+                <div class='V1'>
+                    <div class='text'>1</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V2'>
+                    <div class='text'>2</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V3'>
+                    <div class='text'>3</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V4'>
+                    <div class='text'>4</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V5'>
+                    <div class='text'>5</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V6'>
+                    <div class='text'>6</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V7'>
+                    <div class='text'>7</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V8'>
+                    <div class='text'>8</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V9'>
+                    <div class='text'>9</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V10'>
+                    <div class='text'>10</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V11'>
+                    <div class='text'>11</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V12'>
+                    <div class='text'>12</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V13'>
+                    <div class='text'>13</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V14'>
+                    <div class='text'>14</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+                <div class='V15'>
+                    <div class='text'>15</div>
+                    <div class='quarter top-left'></div>
+                    <div class='quarter top-right'></div>
+                    <div class='quarter bottom-left'></div>
+                    <div class='quarter bottom-right'></div>
+                </div>
+            </div>
+        </div>
+        <div class='controller-status'>
+            <h2>
+                <div class='controller-status-text'>Controller Status</div>
+            </h2>
+            <div class='controller-status-flex'>
+                <div class='VC1'>V1</div>
+                <div class='VC2'>V2</div>
+                <div class='VC3'>V3</div>
+                <div class='VC4'>V4</div>
+                <div class='PC1'>P1</div>
+                <div class='PC2'>P2</div>
+                <div class='PC3'>P3</div>
+                <div class='PC4'>P4</div>
+            </div>
+        </div>
+    </div>
+
+    <div class='eight_controller_container'>
+        <div class='NO_CTRL'><br><br>
+            <h2>Connect and Interact With a Controller to Begin!</h2>
+        </div>
+
+        <div class='CTRL1'>
+            <input type='text' id='username_ctrl_1' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 1'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL2'>
+            <input type='text' id='username_ctrl_2' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 2'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL3'>
+            <input type='text' id='username_ctrl_3' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 3'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL4'>
+            <input type='text' id='username_ctrl_4' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 4'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL5'>
+            <input type='text' id='username_ctrl_5' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 5'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL6'>
+            <input type='text' id='username_ctrl_6' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 6'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL7'>
+            <input type='text' id='username_ctrl_7' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 7'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL8'>
+            <input type='text' id='username_ctrl_8' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Controller 8'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+
+        <div class='CTRL9'>
+            <input type='text' id='username_ctrl_9' class='controller-name-input' maxlength='16' autocomplete='off'
+                value='Keyboard'>
+            <div class='controller_container'>
+                <div class='L'>L</div>
+                <div class='U'>U</div>
+                <div class='R'>R</div>
+                <div class='D'>D</div>
+                <div class='LT'>LT</div>
+                <div class='RT'>RT</div>
+                <div class='X'>X</div>
+                <div class='Y'>Y</div>
+                <div class='B'>B</div>
+                <div class='A'>A</div>
+                <div class='SEL'>N/S</div>
+                <div class='CTR'>N/C</div>
+                <div class='NAME'></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Designed By Stepstools in California. Assembled in USA.</p>
+    </footer>
+
+    <script>
+        let websocket; // Global Websocket Variable
+        let socketConnected = false; // Tracks current status of WS connection.
+
+
+        let keyboardActive = false; // Tracks if the keyboard is currently enabled.
+        let displayedControllers = 0; // Tracks how many controllers are displayed so the welcome message can be displayed if no controllers are.
+
+        const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4', 'N/C']; // Used to display readable controller names based on index.
+        const ctrColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#ccc'] // Controller colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
+        const ctrButtonColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#adadad'] // Controller button colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
+
+        let vehicle_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
+        let user_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
+
+        let assigned_controllers = [8, 8, 8, 8, 8, 8, 8, 8, 8] // Rokenbok Controllers Assigned to Each Controller (Gamepad 1-8, Keyboard), 8 = Not Assigned
+        let control_keys = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Control Keys Assigned to Each Controller (Gamepad 1-8, Keyboard)
+        let selValues = [15, 15, 15, 15, 15, 15, 15, 15, 15]; // Vehicles Selections for Each Controller (Gamepad 1-8, Keyboard)
+
+        // Used to track previous statess of gamepad buttons because they use polling and not interrupts.
+        let selectButtonPressed = [false, false, false, false, false, false, false, false,];
+        let backButtonPressed = [false, false, false, false, false, false, false, false];
+        let prevA = [false, false, false, false, false, false, false, false];
+        let prevB = [false, false, false, false, false, false, false, false];
+        let prevX = [false, false, false, false, false, false, false, false];
+        let prevY = [false, false, false, false, false, false, false, false];
+        let prevU = [false, false, false, false, false, false, false, false];
+        let prevD = [false, false, false, false, false, false, false, false];
+        let prevL = [false, false, false, false, false, false, false, false];
+        let prevR = [false, false, false, false, false, false, false, false];
+        let prevS = [false, false, false, false, false, false, false, false];
+
+        // Function to check if any text boxes are focused.
+        function areTextBoxesFocused() {
+            for (let i = 1; i <= 9; i++) {
+                const userNameTextBox = document.getElementById(`username_ctrl_${i}`);
+                if (document.activeElement === userNameTextBox) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Attempts to initialize the web socket connection.
+        function initWebSocket() {
+            console.log('Attempting to open a web socket connection...');
+            websocket = new WebSocket(`ws://${window.location.hostname}/ws`);
+            //websocket = new WebSocket(`ws://192.168.1.41/ws`);
+            websocket.binaryType = "arraybuffer"; // Received binary is in array format.
+            websocket.onopen = onOpenWS;
+            websocket.onclose = onCloseWS;
+            websocket.onmessage = onMessageWS;
+        }
+
+        // Runs when the web socket opens.
+        function onOpenWS() {
+            socketConnected = true;
+            console.log('Web socket opened!');
+            document.querySelector('.WS').style.backgroundColor = '#65A81E';
+            sendArray([0xC0]); // Request current status from the device.
+            sendArray([0xC2]); // Request vehicle names.
+            sendArray([0xC4]); // Request user names.
+        }
+
+        // Runs when the web socket closes.
+        function onCloseWS() {
+            socketConnected = false;
+            control_keys = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            console.log('Web socket closed!');
+            document.querySelector('.WS').style.backgroundColor = '#CCC';
+            initWebSocket(); // Attempt to re-establish WS connection.
+        }
+
+        // Runs when web socket data is received.
+        function onMessageWS(event) {
+            let data_array = new Uint8Array(event.data);
+
+            // First byte 0x20 indicates a new vehicle select has been received.
+            if (data_array[0] == 0x20 && data_array.length > 2) {
+                for (let i = 0; i < 9; i++) {
+                    if (control_keys[i] == data_array[1]) {
+                        selValues[i] = data_array[2];
+                        document.querySelector(`.CTRL${i + 1} .SEL`).textContent = selValues[i] === 15 ? 'N/S' : selValues[i] + 1;
+                        document.querySelector(`.CTRL${i + 1} .NAME`).textContent = selValues[i] === 15 ? '' : vehicle_names[selValues[i]];
+                        break;
+                    }
+                }
+
+                // First byte 0xC0 indicates status array received. Process it here.
+            } else if (data_array[0] == 0xC0 && data_array.length > 8) {
+                let timesVehicleSelected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+                if (data_array[1] == 0) { // Smart Port Status Byte
+                    document.querySelector('.SP').style.backgroundColor = '#CCC';
+                } else {
+                    document.querySelector('.SP').style.backgroundColor = '#65A81E';
+                }
+                for (let i = 1; i < 16; i++) {  // Reset All Vehicle Status Boxes to Gray
+                    document.querySelector(`.V${i} .top-left`).style.backgroundColor = '#ccc';
+                    document.querySelector(`.V${i} .bottom-left`).style.backgroundColor = '#ccc';
+                    document.querySelector(`.V${i} .top-right`).style.backgroundColor = '#ccc';
+                    document.querySelector(`.V${i} .bottom-right`).style.backgroundColor = '#ccc';
+                }
+                for (let i = 2; i < 10; i++) { // Controller Select Bytes
+                    vehicle = data_array[i] + 1;
+                    if ((vehicle > 0) && (vehicle < 16)) {
+                        if (timesVehicleSelected[data_array[i]] == 0) {
+                            document.querySelector(`.V${vehicle} .top-left`).style.backgroundColor = ctrColors[i - 2];
+                            document.querySelector(`.V${vehicle} .bottom-left`).style.backgroundColor = ctrColors[i - 2];
+                            document.querySelector(`.V${vehicle} .top-right`).style.backgroundColor = ctrColors[i - 2];
+                            document.querySelector(`.V${vehicle} .bottom-right`).style.backgroundColor = ctrColors[i - 2];
+                        } else if (timesVehicleSelected[data_array[i]] == 1) {
+                            document.querySelector(`.V${vehicle} .top-right`).style.backgroundColor = ctrColors[i - 2];
+                            document.querySelector(`.V${vehicle} .bottom-right`).style.backgroundColor = ctrColors[i - 2];
+                        } else if (timesVehicleSelected[data_array[i]] == 2) {
+                            document.querySelector(`.V${vehicle} .bottom-right`).style.backgroundColor = ctrColors[i - 2];
+                        } else if (timesVehicleSelected[data_array[i]] == 3) {
+                            document.querySelector(`.V${vehicle} .bottom-left`).style.backgroundColor = ctrColors[i - 2];
+                        } else {
+                            document.querySelector(`.V${vehicle} .top-left`).style.backgroundColor = '#808080';
+                            document.querySelector(`.V${vehicle} .bottom-left`).style.backgroundColor = '#808080';
+                            document.querySelector(`.V${vehicle} .top-right`).style.backgroundColor = '#808080';
+                            document.querySelector(`.V${vehicle} .bottom-right`).style.backgroundColor = '#808080';
+                        }
+                        timesVehicleSelected[data_array[i]] += 1;
+                    }
+                }
+                for (let i = 1; i < 5; i++) { // Virtual Controller Control Keys
+                    document.querySelector(`.VC${i}`).style.outline = "0px solid black";
+                    if (data_array[i + 9] == 0) {
+                        document.querySelector(`.VC${i}`).style.backgroundColor = '#ccc';
+                    } else {
+                        document.querySelector(`.VC${i}`).style.backgroundColor = ctrColors[i - 1];
+                        if (control_keys.includes(data_array[i + 9])) {
+                            document.querySelector(`.VC${i}`).style.outline = "3px solid black";
+                        }
+                    }
+                }
+                for (let i = 1; i < 5; i++) { // Physical Controller Control Keys
+                    document.querySelector(`.PC${i}`).style.outline = "0px solid black";
+                    if (data_array[i + 13] == 0) {
+                        document.querySelector(`.PC${i}`).style.backgroundColor = '#ccc';
+                    } else {
+                        document.querySelector(`.PC${i}`).style.backgroundColor = ctrColors[i + 3];
+                        if (control_keys.includes(data_array[i + 13])) {
+                            document.querySelector(`.PC${i}`).style.outline = "3px solid black";
+                        }
+                        if (data_array[i + 13] == 1) {
+                            document.querySelector(`.PC${i}`).style.outline = "3px solid red";
+                        }
+                    }
+                }
+                for (let controller_num = 0; controller_num < 9; controller_num++) { // Determine Which Rokenbok Controller is Assigned to Each Web Controller
+                    assigned_controllers[controller_num] = 8;  // Reset All Assigned Controllers to 8 (No Controller)
+                    // document.querySelector(`.CTRL${controller_num + 1} .CTR`).textContent = "";//"N/C";
+                    // document.querySelector(`.CTRL${controller_num + 1} .CTR`).style.backgroundColor = "transparent";//"N/C";
+                    if (control_keys[controller_num] != 0) {
+                        for (let i = 10; i < 18; i++) {
+                            if (data_array[i] == control_keys[controller_num]) {
+                                assigned_controllers[controller_num] = i - 10; // Store the current controller for the purposes of button coloring in other parts of the code.
+                                break;
+                            }
+                        }
+                        document.querySelector(`.CTRL${controller_num + 1} .CTR`).textContent = ctrValue_text[assigned_controllers[controller_num]];
+                        document.querySelector(`.CTRL${controller_num + 1} .CTR`).style.backgroundColor = ctrColors[assigned_controllers[controller_num]];
+                    }
+                }
+
+                // First byte 0xC1 indicates a new control key has been assigned.
+            } else if (data_array[0] == 0xC1 && data_array.length > 2) {
+                if ((data_array[1] >= 0) && (data_array[1] <= 8)) {
+                    control_keys[data_array[1]] = data_array[2];
+                }
+
+                // First byte 0xC2 indicates vehicle names have been received.
+            } else if (data_array[0] == 0xC2) {
+                const decoder = new TextDecoder('utf-8');
+                let stringed_data_array = decoder.decode(data_array);
+                let string_parts_array = stringed_data_array.split("=");
+                string_parts_array.shift();
+                string_parts_array.pop();
+
+                vehicle_names = string_parts_array;
+
+                // First byte 0xC4 indicates user names have been received.
+            } else if (data_array[0] == 0xC4) {
+                const decoder = new TextDecoder('utf-8');
+                let stringed_data_array = decoder.decode(data_array);
+                let string_parts_array = stringed_data_array.split("=");
+                string_parts_array.shift();
+                string_parts_array.pop();
+
+                user_names = string_parts_array;
+            }
+        }
+
+        // Attempts to send a dataArray if the socket is currently connected.
+        function sendArray(dataArray) {
+            const uint8ArrayData = new Uint8Array(dataArray);
+            if (socketConnected) {
+                websocket.send(uint8ArrayData);
+            } else {
+                console.log('Socket Not Connected');
+            }
+        }
+
+        // Sends control data if a control key is currently assigned.
+        function sendControlData(control_code, controller_number) {
+            if (control_keys[controller_number] > 1) {
+                if ((selValues[controller_number] != 0x0F) || (control_code == 0x20)) {
+                    sendArray([control_code, control_keys[controller_number], selValues[controller_number]]);
+                }
+            } else {
+                sendArray([0xC1, controller_number]);
+            }
+        }
+
+        // Updates button styles when gamepad button is pressed.
+        function updateButtonStyle(gamepadIndex, buttonIndex, isPressed) {
+            if (isPressed) {
+                document.querySelector(`.CTRL${gamepadIndex + 1} .${buttonIndex}`).style.backgroundColor = ctrButtonColors[assigned_controllers[gamepadIndex]];
+            } else {
+                document.querySelector(`.CTRL${gamepadIndex + 1} .${buttonIndex}`).style.backgroundColor = '#ccc';
+            }
+        }
+
+        // Polls the gamepads and applies appropriate logic.
+        function processGamePadFrame() {
+            const gamepads = navigator.getGamepads();
+            let axisUp, axisDown, axisLeft, axisRight, axisSlow = 0;
+
+            for (let i = 0; i < gamepads.length && i < 8; i++) { // "For each gamepad up to 8..."
+                const gamepad = gamepads[i];
+
+                if (gamepad && gamepad.buttons.length > 15) { // "If the gamepad is plugged in and has enough buttons."
+                    axisUp = (gamepad.axes[1] < -0.1);
+                    axisDown = (gamepad.axes[1] > 0.1);
+                    axisLeft = (gamepad.axes[0] < -0.1);
+                    axisRight = (gamepad.axes[0] > 0.1);
+                    axisSlow = ((Math.sqrt(gamepad.axes[0] ** 2 + gamepad.axes[1] ** 2) < 0.7) && (Math.sqrt(gamepad.axes[0] ** 2 + gamepad.axes[1] ** 2) > 0.1));
+
+                    updateButtonStyle(i, 'A', gamepad.buttons[0].pressed);
+                    updateButtonStyle(i, 'B', gamepad.buttons[1].pressed);
+                    updateButtonStyle(i, 'X', gamepad.buttons[2].pressed);
+                    updateButtonStyle(i, 'Y', gamepad.buttons[3].pressed);
+                    updateButtonStyle(i, 'LT', gamepad.buttons[4].pressed || axisSlow);
+                    updateButtonStyle(i, 'RT', gamepad.buttons[5].pressed);
+                    updateButtonStyle(i, 'U', gamepad.buttons[12].pressed || axisUp);
+                    updateButtonStyle(i, 'D', gamepad.buttons[13].pressed || axisDown);
+                    updateButtonStyle(i, 'L', gamepad.buttons[14].pressed || axisLeft);
+                    updateButtonStyle(i, 'R', gamepad.buttons[15].pressed || axisRight);
+
+                    // Decrease SEL value when Back (button 8) is pressed (once per press).
+                    if (gamepad.buttons[8].pressed && !backButtonPressed[i]) {
+                        selValues[i] = (selValues[i] - 1 + 16) % 16; // Wrap around 0-15.
+                        sendControlData(0x20, i);
+                        backButtonPressed[i] = true;
+                    } else if (!gamepad.buttons[8].pressed) {
+                        backButtonPressed[i] = false; // Reset the flag when Back button is released
+                    }
+
+                    // Increase SEL value when Select (button 9) is pressed (once per press).
+                    if (gamepad.buttons[9].pressed && !selectButtonPressed[i]) {
+                        selValues[i] = (selValues[i] + 1) % 16; // Wrap around 0-15.
+                        sendControlData(0x20, i);
+                        selectButtonPressed[i] = true;
+                    } else if (!gamepad.buttons[9].pressed) {
+                        selectButtonPressed[i] = false; // Reset the flag when Select button is released
+                    }
+
+                    if (gamepad.buttons[0].pressed != prevA[i]) {
+                        if (gamepad.buttons[0].pressed == true) {
+                            sendControlData(0x00, i);
+                        } else {
+                            sendControlData(0x10, i);
+                        }
+                        prevA[i] = gamepad.buttons[0].pressed;
+                    }
+
+                    if (gamepad.buttons[1].pressed != prevB[i]) {
+                        if (gamepad.buttons[1].pressed == true) {
+                            sendControlData(0x01, i);
+                        } else {
+                            sendControlData(0x11, i);
+                        }
+                        prevB[i] = gamepad.buttons[1].pressed;
+                    }
+
+                    if (gamepad.buttons[2].pressed != prevX[i]) {
+                        if (gamepad.buttons[2].pressed == true) {
+                            sendControlData(0x02, i);
+                        } else {
+                            sendControlData(0x12, i);
+                        }
+                        prevX[i] = gamepad.buttons[2].pressed;
+                    }
+
+                    if (gamepad.buttons[3].pressed != prevY[i]) {
+                        if (gamepad.buttons[3].pressed == true) {
+                            sendControlData(0x03, i);
+                        } else {
+                            sendControlData(0x13, i);
+                        }
+                        prevY[i] = gamepad.buttons[3].pressed;
+                    }
+
+                    if ((gamepad.buttons[12].pressed || axisUp) != prevU[i]) {
+                        if ((gamepad.buttons[12].pressed || axisUp) == true) {
+                            sendControlData(0x04, i);
+                        } else {
+                            sendControlData(0x14, i);
+                        }
+                        prevU[i] = (gamepad.buttons[12].pressed || axisUp);
+                    }
+
+                    if ((gamepad.buttons[13].pressed || axisDown) != prevD[i]) {
+                        if ((gamepad.buttons[13].pressed || axisDown) == true) {
+                            sendControlData(0x05, i);
+                        } else {
+                            sendControlData(0x15, i);
+                        }
+                        prevD[i] = (gamepad.buttons[13].pressed || axisDown);
+                    }
+
+                    if ((gamepad.buttons[14].pressed || axisLeft) != prevL[i]) {
+                        if ((gamepad.buttons[14].pressed || axisLeft) == true) {
+                            sendControlData(0x06, i);
+                        } else {
+                            sendControlData(0x16, i);
+                        }
+                        prevL[i] = (gamepad.buttons[14].pressed) || axisLeft;
+                    }
+
+                    if ((gamepad.buttons[15].pressed || axisRight) != prevR[i]) {
+                        if ((gamepad.buttons[15].pressed || axisRight) == true) {
+                            sendControlData(0x07, i);
+                        } else {
+                            sendControlData(0x17, i);
+                        }
+                        prevR[i] = (gamepad.buttons[15].pressed || axisRight);
+                    }
+
+                    if ((gamepad.buttons[4].pressed || gamepad.buttons[5].pressed || axisSlow) != prevS[i]) {
+                        if ((gamepad.buttons[4].pressed || gamepad.buttons[5].pressed || axisSlow) == true) {
+                            sendControlData(0x08, i);
+                        } else {
+                            sendControlData(0x18, i);
+                        }
+                        prevS[i] = (gamepad.buttons[4].pressed || gamepad.buttons[5].pressed || axisSlow) === true ? 1 : 0;
+                    }
+                }
+            }
+            requestAnimationFrame(processGamePadFrame); // Repeat this function.
+        }
+
+        // Handles the gamepadconnected event.
+        function handleGamepadConnect(event) {
+            displayedControllers += 1;
+            document.querySelector('.NO_CTRL').style.display = 'none';
+            document.querySelector(`.CTRL${event.gamepad.index + 1}`).style.display = 'block';
+
+            sendArray([0xC1, event.gamepad.index]);
+        }
+
+        // Handles the gamepaddisconnected event.
+        function handleGamepadDisconnect(event) {
+            sendControlData(0x1A, event.gamepad.index);  // Release Controller
+
+            control_keys[event.gamepad.index] = 0;
+            selValues[event.gamepad.index] = 15;
+
+            displayedControllers -= 1;
+            if (displayedControllers == 0) {
+                document.querySelector('.NO_CTRL').style.display = 'block';
+            }
+
+            document.querySelector(`.CTRL${event.gamepad.index + 1}`).style.display = 'none';
+            document.querySelector(`.CTRL${event.gamepad.index + 1} .SEL`).textContent = 'N/S';
+            document.querySelector(`.CTRL${event.gamepad.index + 1} .CTR`).textContent = 'N/C';
+            document.querySelector(`.CTRL${event.gamepad.index + 1} .NAME`).textContent = '';
+
+            // TODO: Are these really required???
+            updateButtonStyle(event.gamepad.index, 'A', false);
+            updateButtonStyle(event.gamepad.index, 'B', false);
+            updateButtonStyle(event.gamepad.index, 'X', false);
+            updateButtonStyle(event.gamepad.index, 'Y', false);
+            updateButtonStyle(event.gamepad.index, 'LT', false);
+            updateButtonStyle(event.gamepad.index, 'RT', false);
+            updateButtonStyle(event.gamepad.index, 'U', false);
+            updateButtonStyle(event.gamepad.index, 'D', false);
+            updateButtonStyle(event.gamepad.index, 'L', false);
+            updateButtonStyle(event.gamepad.index, 'R', false);
+        }
+
+        // Handles the keyboard keydown event.
+        function handleKeyDown() {
+            if (!areTextBoxesFocused()) {
+                if (event.repeat) return; // Don't process held keys.
+                const key = event.key.toLowerCase();
+                switch (key) {
+                    case "9":
+                        if (keyboardActive == false) {
+                            keyboardActive = true;
+
+                            displayedControllers += 1;
+                            document.querySelector('.NO_CTRL').style.display = 'none';
+                            document.querySelector(`.CTRL9`).style.display = 'block';
+
+                            if (control_keys[8] == 0) {
+                                sendArray([0xC1, 8]);
+                            }
+                        }
+                        return; // Don't run the next switch section.
+
+                    case "0":
+                        if (keyboardActive == true) {
+                            keyboardActive = false;
+
+                            selValues[8] = 15;
+                            sendControlData(0x1A, 8); // Release Controller
+
+                            displayedControllers -= 1;
+                            if (displayedControllers == 0) {
+                                document.querySelector('.NO_CTRL').style.display = 'block';
+                            }
+                            document.querySelector(`.CTRL9`).style.display = 'none';
+                            document.querySelector(`.CTRL9 .SEL`).textContent = 'N/S';
+                            document.querySelector(`.CTRL9 .CTR`).textContent = 'N/C';
+                            document.querySelector(`.CTRL9 .NAME`).textContent = '';
+
+                            updateButtonStyle(8, 'A', false);
+                            updateButtonStyle(8, 'B', false);
+                            updateButtonStyle(8, 'X', false);
+                            updateButtonStyle(8, 'Y', false);
+                            updateButtonStyle(8, 'LT', false);
+                            updateButtonStyle(8, 'RT', false);
+                            updateButtonStyle(8, 'U', false);
+                            updateButtonStyle(8, 'D', false);
+                            updateButtonStyle(8, 'L', false);
+                            updateButtonStyle(8, 'R', false);
+                        }
+                        return; // Don't run the next switch section.
+                }
+                if (keyboardActive == true) {
+                    switch (key) {
+                        case "1":
+                            selValues[8] = (selValues[8] - 1 + 16) % 16; // Wrap around 0-15
+                            sendControlData(0x20, 8);
+                            break;
+                        case "2":
+                            selValues[8] = (selValues[8] + 1 + 16) % 16; // Wrap around 0-15
+                            sendControlData(0x20, 8);
+                            break;
+                        case "f":
+                            updateButtonStyle(8, 'A', true);
+                            sendControlData(0x00, 8);
+                            break;
+                        case "r":
+                            updateButtonStyle(8, 'B', true);
+                            sendControlData(0x01, 8);
+                            break;
+                        case "q":
+                            updateButtonStyle(8, 'X', true);
+                            sendControlData(0x02, 8);
+                            break;
+                        case "e":
+                            updateButtonStyle(8, 'Y', true);
+                            sendControlData(0x03, 8);
+                            break;
+                        case "w":
+                            updateButtonStyle(8, 'U', true);
+                            sendControlData(0x04, 8);
+                            break;
+                        case "s":
+                            updateButtonStyle(8, 'D', true);
+                            sendControlData(0x05, 8);
+                            break;
+                        case "a":
+                            updateButtonStyle(8, 'L', true);
+                            sendControlData(0x06, 8);
+                            break;
+                        case "d":
+                            updateButtonStyle(8, 'R', true);
+                            sendControlData(0x07, 8);
+                            break;
+                        case "shift":
+                            updateButtonStyle(8, 'RT', true);
+                            updateButtonStyle(8, 'LT', true);
+                            sendControlData(0x08, 8);
+                            break;
+                    }
+                }
+            }
+        }
+
+        // Handles the keyboard keyup event.
+        function handleKeyUp() {
+            if (!areTextBoxesFocused()) {
+                const key = event.key.toLowerCase();
+                switch (key) {
+                    case "f":
+                        updateButtonStyle(8, 'A', false);
+                        sendControlData(0x10, 8);
+                        break;
+                    case "r":
+                        updateButtonStyle(8, 'B', false);
+                        sendControlData(0x11, 8);
+                        break;
+                    case "q":
+                        updateButtonStyle(8, 'X', false);
+                        sendControlData(0x12, 8);
+                        break;
+                    case "e":
+                        updateButtonStyle(8, 'Y', false);
+                        sendControlData(0x13, 8);
+                        break;
+                    case "w":
+                        updateButtonStyle(8, 'U', false);
+                        sendControlData(0x14, 8);
+                        break;
+                    case "s":
+                        updateButtonStyle(8, 'D', false);
+                        sendControlData(0x15, 8);
+                        break;
+                    case "a":
+                        updateButtonStyle(8, 'L', false);
+                        sendControlData(0x16, 8);
+                        break;
+                    case "d":
+                        updateButtonStyle(8, 'R', false);
+                        sendControlData(0x17, 8);
+                        break;
+                    case "shift":
+                        updateButtonStyle(8, 'RT', false);
+                        updateButtonStyle(8, 'LT', false);
+                        sendControlData(0x18, 8);
+                        break;
+                }
+            }
+        }
+
+        // Request current status every tenth of a second.
+        function req_status() {
+            sendArray([0xC0]);
+        }
+        setInterval(req_status, 100);
+
+
+        // Request user names every 1 second.
+        function req_names() {
+            sendArray([0xC4]);
+        }
+        setInterval(req_names, 1000);
+
+        // Run when the page is fully loaded.
+        window.addEventListener('DOMContentLoaded', () => {
+            initWebSocket();
+            requestAnimationFrame(processGamePadFrame);
+            window.addEventListener('gamepadconnected', handleGamepadConnect);
+            window.addEventListener('gamepaddisconnected', handleGamepadDisconnect);
+            window.addEventListener("keydown", handleKeyDown);
+            window.addEventListener("keyup", handleKeyUp);
+        });
+
+        // Run before the page is unloaded.
+        window.addEventListener('beforeunload', () => {
+            for (let i = 0; i < 9; i++) {
+                if (control_keys[i] != 0) {
+                    sendControlData(0x1A, 15, control_keys[i], i); // Release Controller
+                }
+            }
+
+            websocket.onclose = function () { }; // Disable onclose Handler
+            websocket.close();
+            return null;
+        });
+
+        const systemStatusTextDiv = document.querySelector('.system-status-text');
+        document.querySelector('.WS').addEventListener('mouseover', function () {
+            systemStatusTextDiv.textContent = "Websocket";
+        });
+        document.querySelector('.WS').addEventListener('mouseout', function () {
+            systemStatusTextDiv.textContent = "System Status";
+        });
+        document.querySelector('.SP').addEventListener('mouseover', function () {
+            systemStatusTextDiv.textContent = "Smart Port";
+        });
+        document.querySelector('.SP').addEventListener('mouseout', function () {
+            systemStatusTextDiv.textContent = "System Status";
+        });
+
+        const vehicleStatusTextDiv = document.querySelector('.vehicle-status-text');
+        for (let i = 1; i <= 15; i++) {
+            const vehicleDiv = document.querySelector(`.V${i}`);
+            if (vehicleDiv) {
+                vehicleDiv.addEventListener('mouseover', function () {
+                    if (vehicle_names[i - 1]) {
+                        vehicleStatusTextDiv.textContent = vehicle_names[i - 1];
+                    } else {
+                        vehicleStatusTextDiv.textContent = "Blank";
+                    }
+                });
+
+                vehicleDiv.addEventListener('mouseout', function () {
+                    vehicleStatusTextDiv.textContent = "Vehicle Status";
+                });
+            }
+        }
+
+        const controllerStatusTextDiv = document.querySelector('.controller-status-text');
+        for (let i = 1; i <= 4; i++) {
+            let ControllerDiv = document.querySelector(`.VC${i}`);
+            if (ControllerDiv) {
+                ControllerDiv.addEventListener('mouseover', function () {
+                    if (user_names[i - 1]) {
+                        controllerStatusTextDiv.textContent = user_names[i - 1];
+                    } else {
+                        controllerStatusTextDiv.textContent = "None";
+                    }
+                });
+
+                ControllerDiv.addEventListener('mouseout', function () {
+                    controllerStatusTextDiv.textContent = "Controller Status";
+                });
+            }
+            ControllerDiv = document.querySelector(`.PC${i}`);
+            if (ControllerDiv) {
+                ControllerDiv.addEventListener('mouseover', function () {
+                    if (user_names[i + 3]) {
+                        controllerStatusTextDiv.textContent = user_names[i + 3];
+                    } else {
+                        controllerStatusTextDiv.textContent = "None";
+                    }
+                });
+
+                ControllerDiv.addEventListener('mouseout', function () {
+                    controllerStatusTextDiv.textContent = "Controller Status";
+                });
+            }
+        }
+
+        for (let i = 1; i <= 9; i++) {
+            const userNameTextBox = document.getElementById(`username_ctrl_${i}`);
+
+            userNameTextBox.addEventListener('blur', () => {
+                const encoder = new TextEncoder();
+                const encodedData = encoder.encode(userNameTextBox.value);
+                const sendData = new Uint8Array([0xC3, control_keys[i - 1], ...encodedData]);
+                sendArray(sendData);
+            });
+        }
+
+    </script>
+</body>
+
+</html>

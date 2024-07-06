@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon"/>
+    <title>Smart Port WiFi Adapter Firmware Update</title>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+            font-family: 'Arial';
+        }
+
+        body, h1, h2, p, ul {
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        h2 {
+            padding-top: 10px;
+            padding-bottom: 10px;
+            font-size: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            font-size: 50px;
+        }
+
+        #left-header {
+            background-color: #DB0017;
+            color: #ffffff;
+            width: fit-content;
+            padding-left: 15px;
+            padding-right: 15px;
+
+        }
+
+        #right-header {
+            background-color: #ffea05;
+            color: #003CC1;
+            text-shadow: 3px 3px 1px #000000;
+            width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+            font-size: 45px;
+            white-space: nowrap;
+            text-overflow: clip;
+            overflow: hidden;
+        }
+
+        nav {
+            background-color: #65A81E;
+            color: #fff;
+            text-align: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        nav a:hover {
+            background-color: #ddd;
+            color: black;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        ul li {
+            display: inline;
+            margin: 10px;
+            text-align: center;
+        }
+
+        #form-container {
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        input, button {
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        footer {
+            background-color: #003CC1;
+            color: #ffffff;
+            text-align: center;
+            font-size: 16px;
+            padding: 0.5em 0;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div id='left-header'>ROKENBOK</div>
+        <div id='right-header'><strong>Smart Port WiFi Adapter</strong></div>
+    </header>
+
+    <nav>
+        <div class='link-bar'>
+            <ul>
+                <li><a href='/'>Initialization</a></li>
+                <li><a href='/update'>Update</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <br>
+    <div id="form-container">
+        <h1>ESP32 Firmware Update</h1><br>
+        <div>
+            <label for="otafile">Firmware File:</label>
+            <input type="file" id="otafile" name="otafile" accept=".bin" />
+        </div>
+        <br>
+        <div>
+            <button id="upload" type="button" onclick="startUpload()">Upload</button>
+        </div>
+        <div id="progress"></div><br>
+        <strong>Current Firmware Version:</strong> 22 Jun 24 Beta<br><br>
+        <strong>Caution:</strong> This device will accept any ESP32 .bin files!  Load only approved .bin files designed for this device!<br>
+        Loading a program not intended for this device will prevent future updates!<br><br>
+    </div>
+    
+
+    <footer>
+        <p>Designed By Stepstools in California. Assembled in USA.</p>
+    </footer>
+
+    <script>
+        function startUpload() {
+            var otafile = document.getElementById("otafile").files;
+
+            if (otafile.length == 0) {
+                alert("No file selected!");
+            } else {
+                document.getElementById("otafile").disabled = true;
+                document.getElementById("upload").disabled = true;
+
+                var file = otafile[0];
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4) {
+                        if (xhr.status == 200) {
+                            document.open();
+                            document.write(xhr.responseText);
+                            document.close();
+                        } else if (xhr.status == 0) {
+                            alert("Server closed the connection abruptly!");
+                            location.reload()
+                        } else {
+                            alert(xhr.status + " Error!\n" + xhr.responseText);
+                            location.reload()
+                        }
+                    }
+                };
+
+                xhr.upload.onprogress = function (e) {
+                    var progress = document.getElementById("progress");
+                    progress.textContent = "Progress: " + (e.loaded / e.total * 100).toFixed(0) + "%";
+                };
+                xhr.open("POST", "/flash", true);
+                xhr.send(file);
+            }
+        }
+    </script>
+</body>
+</html>

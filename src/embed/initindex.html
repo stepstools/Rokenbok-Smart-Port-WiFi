@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon"/>
+    <title>Smart Port WiFi Adapter Initialization</title>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+            font-family: 'Arial';
+        }
+
+        body, h1, h2, p, ul {
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        h2 {
+            padding-top: 10px;
+            padding-bottom: 10px;
+            font-size: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            font-size: 50px;
+        }
+
+        #left-header {
+            background-color: #DB0017;
+            color: #ffffff;
+            width: fit-content;
+            padding-left: 15px;
+            padding-right: 15px;
+
+        }
+
+        #right-header {
+            background-color: #ffea05;
+            color: #003CC1;
+            text-shadow: 3px 3px 1px #000000;
+            width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+            font-size: 45px;
+            white-space: nowrap;
+            text-overflow: clip;
+            overflow: hidden;
+        }
+
+        nav {
+            background-color: #65A81E;
+            color: #fff;
+            text-align: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        nav a:hover {
+            background-color: #ddd;
+            color: black;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        ul li {
+            display: inline;
+            margin: 10px;
+            text-align: center;
+        }
+
+        form {
+            font-size: 16px;
+            text-align: center;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input {
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        input[type="text"], input[type="password"]  {
+            width: 200px;
+        }
+
+        input[type="number"] {
+            width: 28px;
+            appearance: textfield;
+        }
+
+        input[type="submit"] {
+            width: 100px;
+            font-size: 16px;
+        }
+
+        footer {
+            background-color: #003CC1;
+            color: #ffffff;
+            text-align: center;
+            font-size: 16px;
+            padding: 0.5em 0;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div id='left-header'>ROKENBOK</div>
+        <div id='right-header'><strong>Smart Port WiFi Adapter</strong></div>
+    </header>
+
+    <nav>
+        <div class='link-bar'>
+            <ul>
+                <li><a href='/'>Initialization</a></li>
+                <li><a href='/update'>Update</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <br>
+    <div id="form">
+        <form action="/submit" method="post">
+            <h1>System Initialization</h1><br>
+            <strong>Admin Password:</strong> <input type="password" name="adminpassword" maxlength="32" placeholder="1234" required><br>
+            <notice style="color: red;"><strong>IMPORTANT:</strong> Do NOT use a password used for anything else.</notice><br>
+            <notice style="color: red;">Your admin password will be sent unencrypted when accesing the admin page.</notice><br><br>
+            <strong>WiFi SSID:</strong> <input type="text" name="ssid" maxlength="32" placeholder="SSID" required><br>
+            <strong>WiFi Password:</strong> <input type="password" name="password" maxlength="64" placeholder="WiFi Password" required><br><br>
+    
+            <strong>Default Gateway:</strong>
+            <input type="number" name="gw1" min="0" max="255" step="1" placeholder="192" required> .
+            <input type="number" name="gw2" min="0" max="255" step="1" placeholder="168" required> .
+            <input type="number" name="gw3" min="0" max="255" step="1" placeholder="1" required> .
+            <input type="number" name="gw4" min="0" max="255" step="1" placeholder="1" required><br>
+    
+            <strong>Static IP:</strong>
+            <input type="number" name="sip1" min="0" max="255" step="1" placeholder="192" required> .
+            <input type="number" name="sip2" min="0" max="255" step="1" placeholder="168" required> .
+            <input type="number" name="sip3" min="0" max="255" step="1" placeholder="1" required> .
+            <input type="number" name="sip4" min="0" max="255" step="1" placeholder="2" required><br>
+    
+            <strong>Subnet Mask:</strong>
+            <input type="number" name="nm1" min="0" max="255" step="1" placeholder="255" required> .
+            <input type="number" name="nm2" min="0" max="255" step="1" placeholder="255" required> .
+            <input type="number" name="nm3" min="0" max="255" step="1" placeholder="255" required> .
+            <input type="number" name="nm4" min="0" max="255" step="1" placeholder="0" required><br><br>
+    
+            <input type="submit" value="Submit">
+
+            <br><br>
+            <h3>WiFi Initialization Help:</h3>
+            <strong>SSID:</strong> Your WiFi Network Name (No Plus "+" Characters Allowed)<br>
+            <strong>Password:</strong> Your WiFi Network Password (No Spaces Allowed, Leave Blank For No Password)<br><br>
+            <strong>Default Gateway:</strong> Your Router's IP Address<br>
+            <strong>Finding It:</strong> Run "ipconfig" in the command prompt.  Commonly 192.168.1.1 or 192.168.0.1 or 10.0.0.1.<br><br>
+            <strong>Static IP:</strong> Desired IP Address for the Smart Port Adapter<br>
+            <strong>Picking One:</strong> Change just the last number of your default gateway to something else from 2-255.<br>
+            <strong>Note:</strong> This is the address you'll type into the web browser on devices connected to your local network.<br><br>
+            <strong>Subnet Mask:</strong> Your Network's Subnet Mask<br>
+            <strong>Finding It:</strong> Run "ipconfig" in the command prompt.  Commonly 255.255.255.0.<br><br>           
+        </form>
+    </div>
+    
+
+    <footer>
+        <p>Designed By Stepstools in California. Assembled in USA.</p>
+    </footer>
+</body>
+</html>

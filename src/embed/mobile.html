@@ -1,0 +1,580 @@
+
+
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon"/>
+    <title>Smart Port WiFi Control</title>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+            font-family: 'Arial';
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+        }
+
+        body, h1, h2, p, ul {
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        h2 {
+            padding-top: 10px;
+            padding-bottom: 10px;
+            font-size: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            font-size: 50px;
+        }
+
+        #left-header {
+            background-color: #DB0017;
+            color: #ffffff;
+            width: fit-content;
+            padding-left: 15px;
+            padding-right: 15px;
+
+        }
+
+        #right-header {
+            background-color: #ffea05;
+            color: #003CC1;
+            text-shadow: 3px 3px 1px #000000;
+            width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+            font-size: 45px;
+            white-space: nowrap;
+            text-overflow: clip;
+            overflow: hidden;
+        }
+
+        nav {
+            background-color: #65A81E;
+            color: #fff;
+            text-align: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        nav a:hover {
+            background-color: #ddd;
+            color: black;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        ul li {
+            display: inline;
+            margin: 10px;
+            text-align: center;
+        }
+
+        .status_menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center; 
+            text-align: center;
+            gap: 0px 80px;
+        }
+
+        .system-status, .vehicle-status, .controller-status {
+            display: flex;
+            flex-flow: column wrap;
+            align-items: center;
+        }
+
+        .system-status-flex {
+            display: flex;
+            flex-wrap: wrap;
+            width: auto;
+        }
+
+        .vehicle-status-flex {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 400px;
+        }
+
+        .controller-status-flex {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 200px;
+        }
+
+        .WS, .SP {
+            display: inline-block;
+            width: 90px;
+            height: 90px;
+            background-color: #DB0017;
+            border-radius: 1px;
+            margin: 5px;
+            text-align: center;
+            line-height: 85px;
+            font-size: 40px;
+        }
+
+        .V1, .V2, .V3, .V4, .V5, .V6, .V7, .V8, .V9, .V10, .V11, .V12, .V13, .V14, .V15  {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #ccc;
+            border-radius: 1px;
+            margin: 5px;
+            text-align: center;
+            line-height: 40px;
+            font-size: 20px;
+        }
+
+        .VC1, .VC2, .VC3, .VC4, .PC1, .PC2, .PC3, .PC4  {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #ccc;
+            border-radius: 1px;
+            margin: 5px;
+            text-align: center;
+            line-height: 40px;
+            font-size: 20px;
+        }
+
+        .eight_controller_container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center; 
+            text-align: center;
+            gap: 0px 70px;
+            padding-bottom: 60px;
+        }
+
+        .controller_container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 130px 1fr 1fr 1fr; /* Adjusted column widths */
+            grid-template-rows: 1fr 1fr 1fr 1fr;
+            gap: 5px 5px;
+            grid-template-areas:
+                'LT LT LT . RT RT RT'
+                '. U . SEL . BY .'
+                'L . R . BX . B'
+                '. D . . . A .';
+            justify-items: center;
+        }
+
+        .U { grid-area: U; }
+        .D { grid-area: D; }
+        .L { grid-area: L; }
+        .R { grid-area: R; }
+        .LT { grid-area: LT; }
+        .RT { grid-area: RT; }
+        .A { grid-area: A; }
+        .B { grid-area: B; }
+        .X { grid-area: BX; }
+        .Y { grid-area: BY; }
+        .SEL { grid-area: SEL; }
+
+        .CTRL1 {
+            margin: 5px auto;
+        }
+
+        .U, .D, .L, .R {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            background-color: #ccc;
+            border-radius: 2px;
+            margin: 0px;
+            line-height: 80px;
+            font-size: 30px;
+        }
+
+        .A, .B, .X, .Y {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            background-color: #ccc;
+            border-radius: 50%;
+            margin: 0px;
+            line-height: 80px;
+            font-size: 30px;
+        }
+
+        .RT, .LT {
+            display: inline-block;
+            width: 160px;
+            height: 60px;
+            background-color: #ccc;
+            border-radius: 2px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            line-height: 60px;
+            font-size: 30px;
+        }
+
+        .U.active, .D.active, .L.active, .R.active, .A.active, .B.active, .X.active, .Y.active, .RT.active, .LT.active {
+            background-color: #65A81E;
+        }
+
+        .SEL {
+            display: inline-block;
+            width: 120px;
+            height: 50px;
+            margin: 0px;
+            line-height: 50px;
+            font-size: 30px;
+            text-align: center;
+        }
+
+        footer {
+            background-color: #003CC1;
+            color: #ffffff;
+            text-align: center;
+            font-size: 16px;
+            padding: 0.5em 0;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div id='left-header'>ROKENBOK</div>
+        <div id='right-header'><strong>Smart Port WiFi Adapter</strong></div>
+    </header>
+
+    <nav>
+        <div class='link-bar'>
+            <ul>
+                <li><a href='/'>Desktop</a></li>
+                <li><a href='mobile'>Mobile</a></li>
+                <li><a href='help'>Help</a></li>
+                <li><a href='admin'>Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class='status_menu'>
+        <div class='system-status'>
+            <h2>System Status</h2>
+            <div class='system-status-flex'>
+                <div class='WS'>WS</div>
+                <div class='SP'>SP</div>
+            </div>
+        </div>
+        <div class='vehicle-status'>
+            <h2>Vehicle Status</h2>
+            <div class='vehicle-status-flex'>
+                <div class='V1'>1</div>
+                <div class='V2'>2</div>
+                <div class='V3'>3</div>
+                <div class='V4'>4</div>
+                <div class='V5'>5</div>
+                <div class='V6'>6</div>
+                <div class='V7'>7</div>
+                <div class='V8'>8</div>
+                <div class='V9'>9</div>
+                <div class='V10'>10</div>
+                <div class='V11'>11</div>
+                <div class='V12'>12</div>
+                <div class='V13'>13</div>
+                <div class='V14'>14</div>
+                <div class='V15'>15</div>
+            </div>
+        </div>
+        <div class='controller-status'>
+            <h2>Controller Status</h2>
+            <div class='controller-status-flex'>
+                <div class='VC1'>V1</div>
+                <div class='VC2'>V2</div>
+                <div class='VC3'>V3</div>
+                <div class='VC4'>V4</div>
+                <div class='PC1'>P1</div>
+                <div class='PC2'>P2</div>
+                <div class='PC3'>P3</div>
+                <div class='PC4'>P4</div>
+            </div>
+        </div>
+    </div>
+
+    <div class='eight_controller_container'>      
+        <div class='CTRL1'>
+            <h2>Touch Controller</h2>
+            <div class='controller_container'>
+                <div class='L' id="left">L</div>
+                <div class='U' id="up">U</div>
+                <div class='R' id="right">R</div>
+                <div class='D' id="down">D</div>
+                <div class='LT' id="lt">LT</div>
+                <div class='RT' id="rt">RT</div>
+                <div class='X' id="x">X</div>
+                <div class='Y' id="y">Y</div>
+                <div class='B' id="b">B</div>
+                <div class='A' id="a">A</div>
+                <select class="SEL" id="select" onchange="updateSelValue(this)">
+                    <option value="15">N/S</option>
+                    <option value="0">1</option>
+                    <option value="1">2</option>
+                    <option value="2">3</option>
+                    <option value="3">4</option>
+                    <option value="4">5</option>
+                    <option value="5">6</option>
+                    <option value="6">7</option>
+                    <option value="7">8</option>
+                    <option value="8">9</option>
+                    <option value="9">10</option>
+                    <option value="10">11</option>
+                    <option value="11">12</option>
+                    <option value="12">13</option>
+                    <option value="13">14</option>
+                    <option value="14">15</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    </br>
+    <footer>
+        <p>Designed By Stepstools in California. Assembled in USA.</p>
+    </footer>
+
+
+    <script>
+        const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4']; // Used to display readable controller names based on index.
+
+        let control_key = 0;
+        let selValue = 15;
+
+        let socketConnected = false;
+        var websocket;
+
+        // Attempts to initialize the web socket connection.
+        function initWebSocket() {
+            console.log('Trying to open a web socket connection...');
+            websocket = new WebSocket(`ws://${window.location.hostname}/ws`);
+            websocket.binaryType = "arraybuffer"; // Received binary is in array format.
+            websocket.onopen = onOpenWS;
+            websocket.onclose = onCloseWS;
+            websocket.onmessage = onMessageWS;
+        }
+
+        // Runs when the web socket opens.
+        function onOpenWS() {
+            socketConnected = true;
+            console.log('Web socket opened!');
+            document.querySelector('.WS').style.backgroundColor = '#65A81E';
+            sendArray([0xC0]); // Request current status from the device.
+        }
+
+        // Runs when the web socket closes.
+        function onCloseWS() {
+            socketConnected = false;
+            console.log('Web socket closed!');
+            document.querySelector('.WS').style.backgroundColor = '#DB0017';
+            initWebSocket(); // Attempt to re-establish WS connection.
+        }
+
+        // Runs when web socket data is received.
+        function onMessageWS(event) {
+            let data_array = new Uint8Array(event.data);
+
+            // First byte 0xC0 indicates status array received. Process it here.
+            if (data_array[0] == 0xC0 && data_array.length > 8) {
+                if (data_array[1] == 0) { // Smart Port Status Byte
+                    document.querySelector('.SP').style.backgroundColor = '#DB0017';
+                } else {
+                    document.querySelector('.SP').style.backgroundColor = '#65A81E';
+                }
+                for (let i = 1; i < 16; i++) {  // Reset All Vehicle Status Boxes to Gray
+                    document.querySelector(`.V${i}`).style.backgroundColor = '#ccc';
+                }
+                for (let i = 2; i < 10; i++) { // Controller Select Bytes
+                    vehicle = data_array[i] + 1;
+                    if ((vehicle > 0) && (vehicle < 16)) {
+                        document.querySelector(`.V${vehicle}`).style.backgroundColor = '#65A81E';
+                    }
+                }
+                for (let i = 1; i < 5; i++) { // Virtual Controller Control Keys
+                    if (data_array[i + 9] == 0) {
+                        document.querySelector(`.VC${i}`).style.backgroundColor = '#ccc';
+                    } else if (control_key == data_array[i + 9]) {
+                        document.querySelector(`.VC${i}`).style.backgroundColor = '#65A81E';
+                    } else {
+                        document.querySelector(`.VC${i}`).style.backgroundColor = '#ffff4d';
+                    }
+                }
+                for (let i = 1; i < 5; i++) { // Physical Controller Control Keys
+                    if (data_array[i + 13] == 0) {
+                        document.querySelector(`.PC${i}`).style.backgroundColor = '#ccc';
+                    } else if (control_key == data_array[i + 13]) {
+                        document.querySelector(`.PC${i}`).style.backgroundColor = '#65A81E';
+                    } else if (data_array[i + 13] == 1) {
+                        document.querySelector(`.PC${i}`).style.backgroundColor = '#DB0017';
+                    } else {
+                        document.querySelector(`.PC${i}`).style.backgroundColor = '#ffff4d';
+                    }
+                }
+                // for (let controller_num = 0; controller_num < 9; controller_num++) { // Determine Which Rokenbok Controller is Assigned to Each Web Controller
+                //     document.querySelector(`.CTRL${controller_num + 1} .CTR`).textContent = "N/C";
+                //     if (control_keys[controller_num] != 0) {
+                //         for (let i = 10; i < 18; i++) {
+                //             if (data_array[i] == control_keys[controller_num]) {
+                //                 document.querySelector(`.CTRL${controller_num + 1} .CTR`).textContent = ctrValue_text[i - 10];
+                //                 break;
+                //             }
+                //         }
+                //     }
+                // }
+
+            // First byte 0xC1 indicates a new control key has been assigned.
+            } else if (data_array[0] == 0xC1 && data_array.length > 2) {
+                if ((data_array[1] >= 0) && (data_array[1] <= 8)) {
+                    console.log('Received New Control Key');
+                    console.log(data_array[1]);
+                    console.log(data_array[2]);
+                    control_key = data_array[2];
+                }
+            }
+        }
+
+        // Attempts to send a dataArray if the socket is currently connected.
+        function sendArray(dataArray) {
+            const uint8ArrayData = new Uint8Array(dataArray);
+            if (socketConnected) {
+                //console.log(uint8ArrayData); // Log sent data to the console.
+                websocket.send(uint8ArrayData);
+            } else {
+                console.log('Socket Not Connected');
+            }
+        }
+
+        // Sends control data if a control key is currently assigned.
+        function sendControlData(control_code, sel_value, control_key, controller_number) {
+            if (control_key > 0) {
+                sendArray([control_code, sel_value, control_key]);
+            } else {
+                console.log('Requesting a Control Key');
+                sendArray([0xC1, controller_number]);
+            }
+        }
+
+        function updateSelValue(selectElement) {
+            selValue = parseInt(selectElement.value);
+            sendControlData(0x09, selValue, control_key, 0);
+        }
+        
+        function buttonPressed(buttonId) {
+            if (buttonId === "left") {
+                console.log("Left button pressed.");
+                sendControlData(0x06, selValue, control_key, 0);
+            } else if (buttonId === "up") {
+                console.log("Up button pressed.");
+                sendControlData(0x04, selValue, control_key, 0);
+            } else if (buttonId === "right") {
+                console.log("Right button pressed.");
+                sendControlData(0x07, selValue, control_key, 0);
+            } else if (buttonId === "down") {
+                console.log("Down button pressed.");
+                sendControlData(0x05, selValue, control_key, 0);
+            } else if (buttonId === "lt") {
+                console.log("LT button pressed.");
+                sendControlData(0x08, selValue, control_key, 0);
+            } else if (buttonId === "rt") {
+                console.log("RT button pressed.");
+                sendControlData(0x08, selValue, control_key, 0);
+            } else if (buttonId === "x") {
+                console.log("X button pressed.");
+                sendControlData(0x02, selValue, control_key, 0);
+            } else if (buttonId === "y") {
+                console.log("Y button pressed.");
+                sendControlData(0x03, selValue, control_key, 0);
+            } else if (buttonId === "b") {
+                console.log("B button pressed.");
+                sendControlData(0x01, selValue, control_key, 0);
+            } else if (buttonId === "a") {
+                console.log("A button pressed.");
+                sendControlData(0x00, selValue, control_key, 0);
+            }
+        }
+
+        function buttonReleased(buttonId) {
+            if (buttonId === "left") {
+                console.log("Left button released.");
+                sendControlData(0x16, selValue, control_key, 0);
+            } else if (buttonId === "up") {
+                console.log("Up button released.");
+                sendControlData(0x14, selValue, control_key, 0);
+            } else if (buttonId === "right") {
+                console.log("Right button released.");
+                sendControlData(0x17, selValue, control_key, 0);
+            } else if (buttonId === "down") {
+                console.log("Down button released.");
+                sendControlData(0x15, selValue, control_key, 0);
+            } else if (buttonId === "lt") {
+                console.log("LT button released.");
+                sendControlData(0x18, selValue, control_key, 0);
+            } else if (buttonId === "rt") {
+                console.log("RT button released.");
+                sendControlData(0x18, selValue, control_key, 0);
+            } else if (buttonId === "x") {
+                console.log("X button released.");
+                sendControlData(0x12, selValue, control_key, 0);
+            } else if (buttonId === "y") {
+                console.log("Y button released.");
+                sendControlData(0x13, selValue, control_key, 0);
+            } else if (buttonId === "b") {
+                console.log("B button released.");
+                sendControlData(0x11, selValue, control_key, 0);
+            } else if (buttonId === "a") {
+                console.log("A button released.");
+                sendControlData(0x10, selValue, control_key, 0);
+            }
+        }
+
+        // Request current status and do so again in a tenth of a second.
+        function req_status() {
+            sendArray([0xC0]);
+        }
+        setInterval(req_status, 100); // Request status update every tenth of a second.
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initWebSocket();
+        });
+
+        document.querySelectorAll('.controller_container div').forEach(button => {
+            button.addEventListener('touchstart', () => {
+                button.classList.add('active');
+                buttonPressed(button.id);
+            });
+
+            button.addEventListener('touchend', () => {
+                button.classList.remove('active');
+                buttonReleased(button.id);
+            });
+        });
+
+        // Run before the page is unloaded.
+        window.addEventListener('beforeunload', () => {
+            sendControlData(0x1A, 15, control_key, 0); // Release Controller
+
+            websocket.onclose = function () {}; // Disable onclose Handler
+            websocket.close();
+            return null;
+        });
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon"/>
+    <title>Smart Port WiFi Adapter</title>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+            font-family: 'Arial';
+        }
+
+        body, h1, h2, p, ul {
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        h2 {
+            padding-top: 10px;
+            padding-bottom: 10px;
+            font-size: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: center;
+            text-align: center;
+            font-size: 50px;
+        }
+
+        #left-header {
+            background-color: #DB0017;
+            color: #ffffff;
+            width: fit-content;
+            padding-left: 15px;
+            padding-right: 15px;
+
+        }
+
+        #right-header {
+            background-color: #ffea05;
+            color: #003CC1;
+            text-shadow: 3px 3px 1px #000000;
+            width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+            font-size: 45px;
+            white-space: nowrap;
+            text-overflow: clip;
+            overflow: hidden;
+        }
+
+        nav {
+            background-color: #65A81E;
+            color: #fff;
+            text-align: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #fff;
+        }
+
+        nav a:hover {
+            background-color: #ddd;
+            color: black;
+            padding-top: 3px;
+            padding-bottom: 3px;
+        }
+
+        ul li {
+            display: inline;
+            margin: 10px;
+            text-align: center;
+        }
+
+        form {
+            font-size: 16px;
+            text-align: center;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input {
+            font-size: 16px;
+            margin-top: 4px;
+        }
+
+        input[type="text"], input[type="password"]  {
+            width: 200px;
+        }
+
+        input[type="number"] {
+            width: 28px;
+            appearance: textfield;
+        }
+
+        input[type="submit"] {
+            width: 140px;
+            font-size: 16px;
+        }
+
+        footer {
+            background-color: #003CC1;
+            color: #ffffff;
+            text-align: center;
+            font-size: 16px;
+            padding: 0.5em 0;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div id='left-header'>ROKENBOK</div>
+        <div id='right-header'><strong>Smart Port WiFi Adapter</strong></div>
+    </header>
+
+    <nav>
+        <div class='link-bar'>
+            <ul>
+                <li><a href='/'>Desktop</a></li>
+                <li><a href='mobile'>Mobile</a></li>
+                <li><a href='help'>Help</a></li>
+                <li><a href='admin'>Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <br>
+    <div id="form">
+        <form action="/updatesettings" method="post">
+            <h1>Admin Preferences</h1><br>
+            <strong>Admin Password:</strong> <input type="password" name="pw" maxlength="32" placeholder="1234" required><br><br>
+
+            <input type="hidden" name="share" value="false">
+            <strong>Allow Vehicle Sharing:</strong> <input type="checkbox" name="share" checked="true" value="true"><br><br>
+
+            <strong>Vehicle 1:</strong> <input type="text" id="veh1" name="veh1" maxlength="20" placeholder="Yellow Loader" required><br>
+            <strong>Vehicle 2:</strong> <input type="text" id="veh2" name="veh2" maxlength="20" placeholder="Green Loader" required><br>
+            <strong>Vehicle 3:</strong> <input type="text" id="veh3" name="veh3" maxlength="20" placeholder="Power Sweeper" required><br>
+            <strong>Vehicle 4:</strong> <input type="text" id="veh4" name="veh4" maxlength="20" placeholder="Blue Monorail" required><br>
+            <strong>Vehicle 5:</strong> <input type="text" id="veh5" name="veh5" maxlength="20" placeholder="Black Monorail" required><br>
+            <strong>Vehicle 6:</strong> <input type="text" id="veh6" name="veh6" maxlength="20" placeholder="Emergency Speedster" required><br>
+            <strong>Vehicle 7:</strong> <input type="text" id="veh7" name="veh7" maxlength="20" placeholder="Fire and Rescue" required><br>
+            <strong>Vehicle 8:</strong> <input type="text" id="veh8" name="veh8" maxlength="20" placeholder="Police Defender" required><br>
+            <strong>Vehicle 9:</strong> <input type="text" id="veh9" name="veh9" maxlength="20" placeholder="Yellow Crane" required><br>
+            <strong>Vehicle 10:</strong> <input type="text" id="veh10" name="veh10" maxlength="20" placeholder="Forklift" required><br>
+            <strong>Vehicle 11:</strong> <input type="text" id="veh11" name="veh11" maxlength="20" placeholder="Green Dozer" required><br>
+            <strong>Vehicle 12:</strong> <input type="text" id="veh12" name="veh12" maxlength="20" placeholder="Yellow Dozer" required><br>
+            <strong>Vehicle 13:</strong> <input type="text" id="veh13" name="veh13" maxlength="20" placeholder="Skip Track" required><br>
+            <strong>Vehicle 14:</strong> <input type="text" id="veh14" name="veh14" maxlength="20" placeholder="Green Transgripper" required><br>
+            <strong>Vehicle 15:</strong> <input type="text" id="veh15" name="veh15" maxlength="20" placeholder="Elevator" required><br><br>
+    
+            <input type="submit" value="Update Settings"><br>
+
+            <h3>Admin Page Help:</h3>
+            <strong>Admin Password:</strong> Must match password set during system initialization.<br>
+            <strong>Vehicles:</strong> Enter a name for each vehicle. Enter something like "X" or "None" for unused vehicles.<br><br>
+            <strong>Current Firmware Version:</strong> 22 Jun 24 Beta<br><br>
+        </form>
+    </div>
+    
+    <footer>
+        <p>Designed By Stepstools in California. Assembled in USA.</p>
+    </footer>
+
+    <script>
+        let websocket; // Global Websocket Variable
+        let vehicle_names = ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""] // Pulled from the server once the websocket opens.
+
+        // Attempts to initialize the web socket connection.
+        function initWebSocket() {
+            console.log('Attempting to open a web socket connection...');
+            websocket = new WebSocket(`ws://${window.location.hostname}/ws`);
+            websocket.binaryType = "arraybuffer"; // Received binary is in array format.
+            websocket.onopen = onOpenWS;
+            websocket.onclose = onCloseWS;
+            websocket.onmessage = onMessageWS;
+        }
+
+        // Runs when the web socket opens.
+        function onOpenWS() {
+            console.log('Web socket opened!');
+            const uint8ArrayData = new Uint8Array([0xC2]);  // Request vehicle names.
+            websocket.send(uint8ArrayData);
+        }
+
+        // Runs when the web socket closes.
+        function onCloseWS() {
+            console.log('Web socket closed!');
+        }
+
+        // Runs when web socket data is received.
+        function onMessageWS(event) {
+            let data_array = new Uint8Array(event.data);
+
+            // First byte 0xC2 indicates vehicle names have been received.
+            if (data_array[0] == 0xC2) {
+                const decoder = new TextDecoder('utf-8');
+                let stringed_data_array = decoder.decode(data_array); 
+                let string_parts_array = stringed_data_array.split("=");
+                string_parts_array.shift();
+                string_parts_array.pop();
+                vehicle_names = string_parts_array;
+                for (let i = 0; i < 15; i++) {
+                    if (vehicle_names[i] != "No Data") {
+                        document.getElementById(`veh${i + 1}`).value = vehicle_names[i];
+                    }
+                }
+                websocket.close();
+            }
+        }
+
+        // Run when the page is fully loaded.
+        window.addEventListener('DOMContentLoaded', () => {
+            initWebSocket();
+        });
+        
+        // Run before the page is unloaded.
+        window.addEventListener('beforeunload', () => {
+            websocket.onclose = function () {}; // Disable onclose Handler
+            websocket.close();
+            return null;
+        });
+    </script>
+</body>
+</html>
