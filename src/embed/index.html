@@ -4,7 +4,7 @@
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon" />
+    <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon"/>
     <title>Smart Port WiFi Adapter</title>
     <style>
         @font-face {
@@ -224,7 +224,6 @@
             outline-offset: -5px;
         }
 
-
         .eight_controller_container {
             display: flex;
             flex-wrap: wrap;
@@ -236,7 +235,7 @@
 
         .controller-name-input {
             font-family: Arial;
-            display: block;
+            display: inline-block;
             text-align: center;
             font-weight: bold;
 
@@ -254,7 +253,6 @@
         .controller_container {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr 100px 1fr 1fr 1fr;
-            /* Adjusted column widths */
             grid-template-rows: 1fr 1fr 1fr 1fr;
             gap: 5px 5px;
             grid-template-areas:
@@ -803,7 +801,6 @@
         function initWebSocket() {
             console.log('Attempting to open a web socket connection...');
             websocket = new WebSocket(`ws://${window.location.hostname}/ws`);
-            //websocket = new WebSocket(`ws://192.168.1.41/ws`);
             websocket.binaryType = "arraybuffer"; // Received binary is in array format.
             websocket.onopen = onOpenWS;
             websocket.onclose = onCloseWS;
@@ -910,8 +907,6 @@
                 }
                 for (let controller_num = 0; controller_num < 9; controller_num++) { // Determine Which Rokenbok Controller is Assigned to Each Web Controller
                     assigned_controllers[controller_num] = 8;  // Reset All Assigned Controllers to 8 (No Controller)
-                    // document.querySelector(`.CTRL${controller_num + 1} .CTR`).textContent = "";//"N/C";
-                    // document.querySelector(`.CTRL${controller_num + 1} .CTR`).style.backgroundColor = "transparent";//"N/C";
                     if (control_keys[controller_num] != 0) {
                         for (let i = 10; i < 18; i++) {
                             if (data_array[i] == control_keys[controller_num]) {
@@ -1324,7 +1319,7 @@
         window.addEventListener('beforeunload', () => {
             for (let i = 0; i < 9; i++) {
                 if (control_keys[i] != 0) {
-                    sendControlData(0x1A, 15, control_keys[i], i); // Release Controller
+                    sendControlData(0x1A, i); // Release Controller
                 }
             }
 
