@@ -649,6 +649,26 @@ static const httpd_uri_t favicon_uri = {
     .handler = favicon_handler,
     .user_ctx = NULL};
 
+/// @brief HTML Handler for Bank Gothic Bold Font Data
+/// @param req http Request
+/// @return ESP Error Returns
+static esp_err_t font_handler(httpd_req_t *req)
+{
+    extern const unsigned char bankgothicbold_ttf_start[] asm("_binary_bankgothicbold_ttf_start");
+    extern const unsigned char bankgothicbold_ttf_end[] asm("_binary_bankgothicbold_ttf_end");
+    const size_t bankgothicbold_ttf_size = (bankgothicbold_ttf_end - bankgothicbold_ttf_start);
+    httpd_resp_set_type(req, "font/ttf");
+    httpd_resp_set_hdr(req, "Connection", "close");
+    httpd_resp_send(req, (const char *)bankgothicbold_ttf_start, bankgothicbold_ttf_size);
+    return ESP_OK;
+}
+
+static const httpd_uri_t font_uri = {
+    .uri = "/bankgothicbold.ttf",
+    .method = HTTP_GET,
+    .handler = font_handler,
+    .user_ctx = NULL};
+
 /// @brief HTML Handler for Main Index Page
 /// @param req http Request
 /// @return ESP Error Returns
@@ -1365,6 +1385,7 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &admin_form_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &websocket_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &favicon_uri));
+            ESP_ERROR_CHECK(httpd_register_uri_handler(server, &font_uri));
         }
         else if (page_version == 1)
         { // Initialization Pages
@@ -1373,6 +1394,7 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &init_update_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &update_post_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &favicon_uri));
+            ESP_ERROR_CHECK(httpd_register_uri_handler(server, &font_uri));
         }
         return server;
     }
