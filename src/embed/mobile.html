@@ -3,7 +3,7 @@
 
 <head>
     <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <link rel="icon" href="favicon.ico?v=4f32ecc8f43d" type="image/x-icon"/>
     <title>Smart Port WiFi Adapter</title>
     <style>
@@ -16,8 +16,11 @@
             position: relative;
             min-height: 100%;
             font-family: 'Arial';
-            user-select: none;
-            -webkit-user-select: none; /* Safari */
+            -webkit-touch-callout: none; /* Safari */
+            -webkit-user-select: none; /* Chrome */     
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; 
         }
 
         body,
@@ -978,6 +981,19 @@
             const sendData = new Uint8Array([0xC3, control_key, ...encodedData]);
             sendArray(sendData);
         });
+
+        document.addEventListener('touchmove', function (event) {
+            if (event.scale !== 1) { event.preventDefault(); }
+        }, { passive: false });
+
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            var now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
 
     </script>
 </body>
