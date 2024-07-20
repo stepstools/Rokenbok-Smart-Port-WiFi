@@ -1543,10 +1543,25 @@ static void IRAM_ATTR spi_task(void *arg)
                     uint8_t bitwise_index = (i + 4) % 8;
                     if (!(recv_byte & (1 << bitwise_index)))
                     { // If it is plugged in...
-                        control_keys[i] = 1;
+                        if (control_keys[i] != 1)
+                        { // And it is not currently tracked as physical controlled...
+                            // Clear out virtual controller data and free for use.
+                            control_keys[i] = 1;
+                            selects[i] = 0x0F;
+                            sp_a &= ~(0b00000001 << bitwise_index);
+                            sp_b &= ~(0b00000001 << bitwise_index);
+                            sp_x &= ~(0b00000001 << bitwise_index);
+                            sp_y &= ~(0b00000001 << bitwise_index);
+                            sp_up &= ~(0b00000001 << bitwise_index);
+                            sp_down &= ~(0b00000001 << bitwise_index);
+                            sp_left &= ~(0b00000001 << bitwise_index);
+                            sp_right &= ~(0b00000001 << bitwise_index);
+                            sp_rt &= ~(0b00000001 << bitwise_index);
+                            sp_priority_byte |= (0b00000001 << bitwise_index);
+                            enable_control[i] = false;
+                            enabled_controllers |= (0b00000001 << bitwise_index); // THIS MAY BE BORKED????
+                        }
                         timeouts[i] = true;
-                        enable_control[i] = false;
-                        enabled_controllers |= (0b00000001 << bitwise_index); // THIS MAY BE BORKED????
                     }
                     else
                     { // If it is not plugged in...
