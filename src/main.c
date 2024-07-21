@@ -75,9 +75,6 @@
 #define GPIO_WIFI_LED 18
 #define GPIO_SP_LED 17
 
-// SP Interface Defines
-#define CONTROLLER_TIMEOUT 10
-
 //  __      __     _____  _____          ____  _      ______  _____   //
 //  \ \    / /\   |  __ \|_   _|   /\   |  _ \| |    |  ____|/ ____|  //
 //   \ \  / /  \  | |__) | | |    /  \  | |_) | |    | |__  | (___    //
@@ -99,6 +96,7 @@ uint8_t selects[8] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F};          
 uint8_t enable_control[8] = {false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4 // FALSE = Normal, TRUE = SP Controlled
 
 uint8_t share_mode = true;
+uint8_t controller_timeout = 30;
 
 uint8_t enabled_controllers = 0b11111111; // V4|V3|V2|V1|P4|P3|P2|P1 // 0 = Enabled, 1 = Disabled
 uint8_t sp_a = 0x00;                      // V4|V3|V2|V1|P4|P3|P2|P1
@@ -572,7 +570,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             send_pkt.payload = (uint8_t *)combined_string;
             httpd_ws_send_frame(req, &send_pkt);
         }
-        else if (ws_pkt.payload[0] == 0xC3) // Received User Name
+        else if (ws_pkt.payload[0] == 0xC3  && ws_pkt.len > 1) // Received User Name
         {
             if (ws_pkt.payload[1] > 1)
             {
@@ -605,6 +603,19 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             send_pkt.len = sizeof(combined_string);
             send_pkt.type = HTTPD_WS_TYPE_BINARY;
             send_pkt.payload = (uint8_t *)combined_string;
+            httpd_ws_send_frame(req, &send_pkt);
+        }
+        else if (ws_pkt.payload[0] == 0xC5) // Request For Admin Page Data
+        {
+            static uint8_t send_data[3];
+            send_data[0] = 0xC5;
+            send_data[1] = share_mode;
+            send_data[2] = controller_timeout;
+            httpd_ws_frame_t send_pkt;
+            memset(&send_pkt, 0, sizeof(httpd_ws_frame_t));
+            send_pkt.len = 3;
+            send_pkt.type = HTTPD_WS_TYPE_BINARY;
+            send_pkt.payload = send_data;
             httpd_ws_send_frame(req, &send_pkt);
         }
     }
@@ -772,6 +783,7 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
 
     char rec_admin_password[32 + 1];
     char rec_share_mode[6];
+    char rec_timeout[4];
     char rec_names[15][20 + 1];
 
     // Tokenize the Input String
@@ -794,6 +806,15 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             {
                 strncpy(rec_share_mode, token, sizeof(rec_share_mode) - 1);
                 rec_share_mode[sizeof(rec_share_mode) - 1] = '\0';
+            }
+        }
+        else if (strcmp(token, "timeout") == 0)
+        {
+            token = strtok(NULL, "&=");
+            if (token != NULL)
+            {
+                strncpy(rec_timeout, token, sizeof(rec_timeout) - 1);
+                rec_timeout[sizeof(rec_timeout) - 1] = '\0';
             }
         }
         else if (strcmp(token, "veh1") == 0)
@@ -1055,6 +1076,13 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
                 nvs_set_u8(nvs_handle, "share_mode", false);
                 share_mode = false;
             }
+
+            controller_timeout = atoi(rec_timeout);
+            // Restart Timeout Timer With New Value
+            esp_timer_stop(timeout_timer);
+            esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
+            nvs_set_u8(nvs_handle, "cont_timeout", controller_timeout);
+
             nvs_set_str(nvs_handle, "v1_name", rec_names[0]);
             nvs_set_str(nvs_handle, "v2_name", rec_names[1]);
             nvs_set_str(nvs_handle, "v3_name", rec_names[2]);
@@ -1072,6 +1100,7 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             nvs_set_str(nvs_handle, "v15_name", rec_names[14]);
             nvs_commit(nvs_handle);
             nvs_close(nvs_handle);
+
             strcpy(nvs_vehicle_names[0], rec_names[0]);
             strcpy(nvs_vehicle_names[1], rec_names[1]);
             strcpy(nvs_vehicle_names[2], rec_names[2]);
@@ -1089,7 +1118,7 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             strcpy(nvs_vehicle_names[14], rec_names[14]);
 
             const char response[] = "Entered admin password was correct and updated settings were stored!\n"
-                                    "Please manually return to the main page at this time.";
+                                    "Click <a href='/'>here</a> to return to the main page.";
             httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
         }
         else
@@ -1100,7 +1129,7 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
     else
     {
         const char response[] = "Entered admin password was not correct!\n"
-                                "Please manually return to the main page at this time.";
+                                "Click <a href='admin'>here</a> to return to the admin page.";
         httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
     }
     return ESP_OK;
@@ -2083,8 +2112,9 @@ static void wifi_init_from_nvs(void)
         return;
     }
 
-    // Get Share Mode from NVS
+    // Get Share Mode and Controller Timeout from NVS
     nvs_get_u8(nvs_handle, "share_mode", &share_mode);
+    nvs_get_u8(nvs_handle, "cont_timeout", &controller_timeout);
 
     // Get Stored Vehicle Names from NVS
     size_t size = sizeof(nvs_vehicle_names[0]);
@@ -2465,7 +2495,7 @@ void app_main(void)
         .callback = &timeout_timer_callback,
         .name = "timeout_timer"};
     esp_timer_create(&timeout_timer_args, &timeout_timer);
-    esp_timer_start_periodic(timeout_timer, CONTROLLER_TIMEOUT * 1000000); // CONTROLLER_TIMEOUT Second Interval
+    esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
 
     // Initialize Post Timeout Timer
     const esp_timer_create_args_t post_timeout_timer_args = {

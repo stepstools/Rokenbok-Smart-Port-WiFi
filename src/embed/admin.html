@@ -155,7 +155,8 @@
             <strong>Admin Password:</strong> <input type="password" name="pw" maxlength="32" placeholder="1234" required><br><br>
 
             <input type="hidden" name="share" value="false">
-            <strong>Allow Vehicle Sharing:</strong> <input type="checkbox" name="share" checked="true" value="true"><br><br>
+            <strong>Allow Vehicle Sharing:</strong> <input type="checkbox" id="share" name="share" checked="true" value="true"><br>
+            <strong>Controller Timeout:</strong> <input type="number" id="timeout" name="timeout" min="1" max="255"><br><br>
 
             <strong>Vehicle 1:</strong> <input type="text" id="veh1" name="veh1" maxlength="20" placeholder="Yellow Loader" required><br>
             <strong>Vehicle 2:</strong> <input type="text" id="veh2" name="veh2" maxlength="20" placeholder="Green Loader" required><br>
@@ -178,7 +179,7 @@
             <h3>Admin Page Help:</h3>
             <strong>Admin Password:</strong> Must match password set during system initialization.<br>
             <strong>Vehicles:</strong> Enter a name for each vehicle. Enter something like "X" or "None" for unused vehicles.<br><br>
-            <strong>Current Firmware Version:</strong> 14 July 24 Beta<br><br>
+            <strong>Current Firmware Version:</strong> 14 July 24 Beta<br><br><br><br>
         </form>
     </div>
     
@@ -188,6 +189,8 @@
 
     <script>
         let websocket; // Global Websocket Variable
+        let socketConnected = false; // Tracks current status of WS connection.
+
         let vehicle_names = ["", "", "", "", "", "", "", "", "", "", "", "", "", "", ""] // Pulled from the server once the websocket opens.
 
         // Attempts to initialize the web socket connection.
@@ -202,13 +205,15 @@
 
         // Runs when the web socket opens.
         function onOpenWS() {
+            socketConnected = true;
             console.log('Web socket opened!');
-            const uint8ArrayData = new Uint8Array([0xC2]);  // Request vehicle names.
-            websocket.send(uint8ArrayData);
+            sendArray([0xC2]); // Request vehicle names.
+            sendArray([0xC5]); // Request admin data.
         }
 
         // Runs when the web socket closes.
         function onCloseWS() {
+            socketConnected = false;
             console.log('Web socket closed!');
         }
 
@@ -229,7 +234,25 @@
                         document.getElementById(`veh${i + 1}`).value = vehicle_names[i];
                     }
                 }
+            // First byte 0xC5 indicates admin data has been received.
+            } else if (data_array[0] == 0xC5) {
+                if (data_array[1] == 0) {
+                    document.getElementById("share").checked = false;
+                } else {
+                    document.getElementById("share").checked = true;
+                }
+                document.getElementById("timeout").value = data_array[2];
                 websocket.close();
+            }
+        }
+
+        // Attempts to send a dataArray if the socket is currently connected.
+        function sendArray(dataArray) {
+            const uint8ArrayData = new Uint8Array(dataArray);
+            if (socketConnected) {
+                websocket.send(uint8ArrayData);
+            } else {
+                console.log('Socket Not Connected');
             }
         }
 
