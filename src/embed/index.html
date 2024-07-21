@@ -758,6 +758,8 @@
         let websocket; // Global Websocket Variable
         let socketConnected = false; // Tracks current status of WS connection.
 
+        let is16sel_mode = true; // True = 15 vehicles, False = 8 vehicles.
+
         let keyboardActive = false; // Tracks if the keyboard is currently enabled.
         let displayedControllers = 0; // Tracks how many controllers are displayed so the welcome message can be displayed if no controllers are.
 
@@ -811,6 +813,7 @@
             socketConnected = true;
             console.log('Web socket opened!');
             document.querySelector('.WS').style.backgroundColor = '#65A81E';
+            sendArray([0xC5]); // Request admin settings.
             sendArray([0xC0]); // Request current status from the device.
             sendArray([0xC2]); // Request vehicle names.
             sendArray([0xC4]); // Request user names.
@@ -918,13 +921,13 @@
                     }
                 }
 
-                // First byte 0xC1 indicates a new control key has been assigned.
+            // First byte 0xC1 indicates a new control key has been assigned.
             } else if (data_array[0] == 0xC1 && data_array.length > 2) {
                 if ((data_array[1] >= 0) && (data_array[1] <= 8)) {
                     control_keys[data_array[1]] = data_array[2];
                 }
 
-                // First byte 0xC2 indicates vehicle names have been received.
+            // First byte 0xC2 indicates vehicle names have been received.
             } else if (data_array[0] == 0xC2) {
                 const decoder = new TextDecoder('utf-8');
                 let stringed_data_array = decoder.decode(data_array);
@@ -934,7 +937,7 @@
 
                 vehicle_names = string_parts_array;
 
-                // First byte 0xC4 indicates user names have been received.
+            // First byte 0xC4 indicates user names have been received.
             } else if (data_array[0] == 0xC4) {
                 const decoder = new TextDecoder('utf-8');
                 let stringed_data_array = decoder.decode(data_array);
@@ -943,6 +946,21 @@
                 string_parts_array.pop();
 
                 user_names = string_parts_array;
+            // First byte 0xC5 indicates admin data has been received.
+            } else if (data_array[0] == 0xC5) {
+                //share_mode = data_array[1];
+                is16sel_mode = data_array[2];
+                //timeout_value = data_array[3];
+
+                if (is16sel_mode) {
+                    for (let i = 9; i < 16; i++) { // Show Vehicles 9-15
+                        document.querySelector(`.V${i}`).style.display = 'inline-block';
+                    }
+                } else {
+                    for (let i = 9; i < 16; i++) { // Hide Vehicles 9-15
+                        document.querySelector(`.V${i}`).style.display = 'none';
+                    }
+                }
             }
         }
 
@@ -1004,7 +1022,17 @@
 
                     // Decrease SEL value when Back (button 8) is pressed (once per press).
                     if (gamepad.buttons[8].pressed && !backButtonPressed[i]) {
-                        selValues[i] = (selValues[i] - 1 + 16) % 16; // Wrap around 0-15.
+                        if (is16sel_mode) {
+                            selValues[i] = (selValues[i] - 1 + 16) % 16; // Wrap around 0-15.
+                        } else {
+                            if (selValues[i] == 0) { // Wrap around 0-7 and 15.
+                                selValues[i] = 15;
+                            } else if (selValues[i] > 7) {
+                                selValues[i] = 7;
+                            } else {
+                                selValues[i] = selValues[i] - 1;
+                            }
+                        }
                         sendControlData(0x20, i);
                         backButtonPressed[i] = true;
                     } else if (!gamepad.buttons[8].pressed) {
@@ -1013,7 +1041,17 @@
 
                     // Increase SEL value when Select (button 9) is pressed (once per press).
                     if (gamepad.buttons[9].pressed && !selectButtonPressed[i]) {
-                        selValues[i] = (selValues[i] + 1) % 16; // Wrap around 0-15.
+                        if (is16sel_mode) {
+                            selValues[i] = (selValues[i] + 1) % 16; // Wrap around 0-15.
+                        } else {
+                            if (selValues[i] == 15) { // Wrap around 0-7 and 15.
+                                selValues[i] = 0;
+                            } else if (selValues[i] >= 7) {
+                                selValues[i] = 15;
+                            } else {
+                                selValues[i] = selValues[i] + 1;
+                            }
+                        }
                         sendControlData(0x20, i);
                         selectButtonPressed[i] = true;
                     } else if (!gamepad.buttons[9].pressed) {
@@ -1196,11 +1234,31 @@
                 if (keyboardActive == true) {
                     switch (key) {
                         case "1":
-                            selValues[8] = (selValues[8] - 1 + 16) % 16; // Wrap around 0-15
+                            if (is16sel_mode) {
+                                selValues[8] = (selValues[8] - 1 + 16) % 16; // Wrap around 0-15.
+                            } else {
+                                if (selValues[8] == 0) { // Wrap around 0-7 and 15.
+                                    selValues[8] = 15;
+                                } else if (selValues[8] > 7) {
+                                    selValues[8] = 7;
+                                } else {
+                                    selValues[8] = selValues[8] - 1;
+                                }
+                            }
                             sendControlData(0x20, 8);
                             break;
                         case "2":
-                            selValues[8] = (selValues[8] + 1 + 16) % 16; // Wrap around 0-15
+                            if (is16sel_mode) {
+                                selValues[8] = (selValues[8] + 1) % 16; // Wrap around 0-15.
+                            } else {
+                                if (selValues[8] == 15) { // Wrap around 0-7 and 15.
+                                    selValues[8] = 0;
+                                } else if (selValues[8] >= 7) {
+                                    selValues[8] = 15;
+                                } else {
+                                    selValues[8] = selValues[8] + 1;
+                                }
+                            }
                             sendControlData(0x20, 8);
                             break;
                         case "f":

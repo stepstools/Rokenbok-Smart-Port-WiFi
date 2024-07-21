@@ -96,6 +96,7 @@ uint8_t selects[8] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F};          
 uint8_t enable_control[8] = {false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4 // FALSE = Normal, TRUE = SP Controlled
 
 uint8_t share_mode = true;
+uint8_t is16sel_mode = true;
 uint8_t controller_timeout = 30;
 
 uint8_t enabled_controllers = 0b11111111; // V4|V3|V2|V1|P4|P3|P2|P1 // 0 = Enabled, 1 = Disabled
@@ -607,13 +608,14 @@ static esp_err_t websocket_handler(httpd_req_t *req)
         }
         else if (ws_pkt.payload[0] == 0xC5) // Request For Admin Page Data
         {
-            static uint8_t send_data[3];
+            static uint8_t send_data[4];
             send_data[0] = 0xC5;
             send_data[1] = share_mode;
-            send_data[2] = controller_timeout;
+            send_data[2] = is16sel_mode;
+            send_data[3] = controller_timeout;
             httpd_ws_frame_t send_pkt;
             memset(&send_pkt, 0, sizeof(httpd_ws_frame_t));
-            send_pkt.len = 3;
+            send_pkt.len = 4;
             send_pkt.type = HTTPD_WS_TYPE_BINARY;
             send_pkt.payload = send_data;
             httpd_ws_send_frame(req, &send_pkt);
@@ -779,10 +781,11 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
+    //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[32 + 1];
     char rec_share_mode[6];
+    char rec_is16sel_mode[6];
     char rec_timeout[4];
     char rec_names[15][20 + 1];
 
@@ -806,6 +809,15 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             {
                 strncpy(rec_share_mode, token, sizeof(rec_share_mode) - 1);
                 rec_share_mode[sizeof(rec_share_mode) - 1] = '\0';
+            }
+        }
+        else if (strcmp(token, "16sel") == 0)
+        {
+            token = strtok(NULL, "&=");
+            if (token != NULL)
+            {
+                strncpy(rec_is16sel_mode, token, sizeof(rec_is16sel_mode) - 1);
+                rec_is16sel_mode[sizeof(rec_is16sel_mode) - 1] = '\0';
             }
         }
         else if (strcmp(token, "timeout") == 0)
@@ -1075,6 +1087,17 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             {
                 nvs_set_u8(nvs_handle, "share_mode", false);
                 share_mode = false;
+            }
+
+            if (strcmp(rec_is16sel_mode, "true") == 0)
+            {
+                nvs_set_u8(nvs_handle, "16sel_mode", true);
+                is16sel_mode = true;
+            }
+            else
+            {
+                nvs_set_u8(nvs_handle, "16sel_mode", false);
+                is16sel_mode = false;
             }
 
             controller_timeout = atoi(rec_timeout);
@@ -1559,7 +1582,12 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_series_count = 4; // Sharing Mode (1 = Allow Sharing)
                 // spi_rec_tpads[2] = recv_byte;
-                send_byte = recv_byte; //(recv_byte & enabled_controllers) | sp_share;
+                if (share_mode) {
+                    send_byte = recv_byte | (~enabled_controllers); // Enable Sharing For Virtual Controllers
+                } else {
+                    send_byte = recv_byte & enabled_controllers; // Disable Sharing For Virtual Controllers
+                }
+                //send_byte = recv_byte; //(recv_byte & enabled_controllers) | sp_share;
             }
             else if (spi_series_count == 4)
             {
@@ -1618,7 +1646,12 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_series_count = 6; // IS16SEL? (0 when plugged in, 1 when not)
                 // spi_rec_tpads[4] = recv_byte;
-                send_byte = 0xFF; //(recv_byte & enabled_controllers) | sp_is16SEL;
+                if (is16sel_mode) {
+                    send_byte = 0xFF; //(recv_byte & enabled_controllers) | sp_is16SEL;
+                } else {
+                    send_byte = 0x00;
+                }
+                
             }
             else if (spi_series_count == 6)
             {
@@ -2112,8 +2145,9 @@ static void wifi_init_from_nvs(void)
         return;
     }
 
-    // Get Share Mode and Controller Timeout from NVS
+    // Get Share Mode, 16sel Mode, and Controller Timeout from NVS
     nvs_get_u8(nvs_handle, "share_mode", &share_mode);
+    nvs_get_u8(nvs_handle, "16sel_mode", &is16sel_mode);
     nvs_get_u8(nvs_handle, "cont_timeout", &controller_timeout);
 
     // Get Stored Vehicle Names from NVS
@@ -2490,13 +2524,6 @@ void app_main(void)
     esp_timer_create(&sync_timer_args, &sync_timer);
     esp_timer_start_periodic(sync_timer, 0.1 * 1000000); // 0.1 Second Interval
 
-    // Initialize Controller Timeout Timer
-    const esp_timer_create_args_t timeout_timer_args = {
-        .callback = &timeout_timer_callback,
-        .name = "timeout_timer"};
-    esp_timer_create(&timeout_timer_args, &timeout_timer);
-    esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
-
     // Initialize Post Timeout Timer
     const esp_timer_create_args_t post_timeout_timer_args = {
         .callback = &post_timeout_timer_callback,
@@ -2544,6 +2571,13 @@ void app_main(void)
 
     // Initialize NVS and check/configure WiFi
     wifi_init_from_nvs();
+
+    // Initialize Controller Timeout Timer (Must Be After wifi_init_from_nvs)
+    const esp_timer_create_args_t timeout_timer_args = {
+        .callback = &timeout_timer_callback,
+        .name = "timeout_timer"};
+    esp_timer_create(&timeout_timer_args, &timeout_timer);
+    esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
 
     // while (1) {
     //     vTaskDelay(pdMS_TO_TICKS(100));

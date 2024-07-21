@@ -156,7 +156,9 @@
 
             <input type="hidden" name="share" value="false">
             <strong>Allow Vehicle Sharing:</strong> <input type="checkbox" id="share" name="share" checked="true" value="true"><br>
-            <strong>Controller Timeout:</strong> <input type="number" id="timeout" name="timeout" min="1" max="255"><br><br>
+            <input type="hidden" name="16sel" value="false">
+            <strong>Enable Vehicles 9-15:</strong> <input type="checkbox" id="16sel" name="16sel" checked="true" value="true"><br>
+            <strong>Controller Timeout:</strong> <input type="number" id="timeout" name="timeout" min="1" max="255" required><br><br>
 
             <strong>Vehicle 1:</strong> <input type="text" id="veh1" name="veh1" maxlength="20" placeholder="Yellow Loader" required><br>
             <strong>Vehicle 2:</strong> <input type="text" id="veh2" name="veh2" maxlength="20" placeholder="Green Loader" required><br>
@@ -241,7 +243,12 @@
                 } else {
                     document.getElementById("share").checked = true;
                 }
-                document.getElementById("timeout").value = data_array[2];
+                if (data_array[2] == 0) {
+                    document.getElementById("16sel").checked = false;
+                } else {
+                    document.getElementById("16sel").checked = true;
+                }
+                document.getElementById("timeout").value = data_array[3];
                 websocket.close();
             }
         }

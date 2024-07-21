@@ -608,6 +608,9 @@
     <script>
         let websocket; // Global Websocket Variable
         let socketConnected = false; // Tracks current status of WS connection.
+
+        let is16sel_mode = true; // True = 15 vehicles, False = 8 vehicles.
+
         const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4', 'N/C']; // Used to display readable controller names based on index.
         const ctrColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#ccc'] // Controller colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
         const ctrButtonColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#adadad'] // Controller button colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
@@ -644,6 +647,7 @@
             socketConnected = true;
             console.log('Web socket opened!');
             document.querySelector('.WS').style.backgroundColor = '#65A81E';
+            sendArray([0xC5]); // Request admin settings.
             sendArray([0xC0]); // Request current status from the device.
             sendArray([0xC2]); // Request vehicle names.
             sendArray([0xC4]); // Request user names.
@@ -773,6 +777,28 @@
                 string_parts_array.pop();
 
                 user_names = string_parts_array;
+            } else if (data_array[0] == 0xC5) {
+                //share_mode = data_array[1];
+                is16sel_mode = data_array[2];
+                //timeout_value = data_array[3];
+
+                if (is16sel_mode) {
+                    for (let i = 9; i < 16; i++) { // Show Vehicles 9-15
+                        document.querySelector(`.V${i}`).style.display = 'inline-block';
+                    }
+                } else {
+                    for (let i = 9; i < 16; i++) { // Hide Vehicles 9-15
+                        document.querySelector(`.V${i}`).style.display = 'none';
+                    }
+
+                    const select_element = document.getElementById('select'); // Remove Options 9-15 From Select Dropdown
+                    for (let i = select_element.options.length - 1; i >= 0; i--) {
+                        const value = parseInt(select_element.options[i].value);
+                        if (value >= 8 && value <= 14) {
+                            select_element.remove(i);
+                        }
+                    }
+                }
             }
         }
 
