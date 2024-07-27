@@ -1703,13 +1703,13 @@ static void IRAM_ATTR spi_task(void *arg)
             }
             else if (spi_series_count == 14)
             {
-                spi_series_count = 15; // RESERVED (0 when plugged in, 1 when not)
+                spi_series_count = 15; // RESERVED FOR A' (RT+A) (0 when plugged in, 1 when not)
                 // spi_rec_tpads[13] = recv_byte;
                 send_byte = recv_byte;
             }
             else if (spi_series_count == 15)
             {
-                spi_series_count = 16; // RESERVED (0 when plugged in, 1 when not)
+                spi_series_count = 16; // RESERVED FOR B' (RT+B) (0 when plugged in, 1 when not)
                 // spi_rec_tpads[14] = recv_byte;
                 send_byte = recv_byte;
             }
