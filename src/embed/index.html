@@ -859,7 +859,7 @@
                     }
                 }
 
-                // First byte 0xC0 indicates status array received. Process it here.
+            // First byte 0xC0 indicates status array received. Process it here.
             } else if (data_array[0] == 0xC0 && data_array.length > 8) {
                 let timesVehicleSelected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -961,7 +961,6 @@
                         document.querySelector(`.CTRL${controller_num + 1} .CTR`).style.backgroundColor = ctrColors[assigned_controllers[controller_num]];
                     }
                 }
-
             // First byte 0xC1 indicates a new control key has been assigned.
             } else if (data_array[0] == 0xC1 && data_array.length > 2) {
                 if ((data_array[1] >= 0) && (data_array[1] <= 8)) {
@@ -1479,6 +1478,20 @@
                 ControllerDiv.addEventListener('mouseover', function () {
                     if (user_names[i + 3]) {
                         controllerStatusTextDiv.textContent = user_names[i + 3];
+                    } else {
+                        controllerStatusTextDiv.textContent = "None";
+                    }
+                });
+
+                ControllerDiv.addEventListener('mouseout', function () {
+                    controllerStatusTextDiv.textContent = "Controller Status";
+                });
+            }
+            ControllerDiv = document.querySelector(`.DC${i}`);
+            if (ControllerDiv) {
+                ControllerDiv.addEventListener('mouseover', function () {
+                    if (user_names[i + 7]) {
+                        controllerStatusTextDiv.textContent = user_names[i + 7];
                     } else {
                         controllerStatusTextDiv.textContent = "None";
                     }
