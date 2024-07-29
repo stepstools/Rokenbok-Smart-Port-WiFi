@@ -54,7 +54,8 @@
 #define SLAVE_SYNC 0x81
 #define SLAVE_NO_INS 0x82
 #define SLAVE_WAIT_INS 0x83
-#define ENABLE_ATTRIB_BYTE 0x0D // 0x2D For Packet Injection
+#define PACKET_INJECT_ATTRIB_BYTE 0x2D // Packet Injection
+#define ENABLE_ATTRIB_BYTE 0x0D // No Packet Injection
 #define DISABLE_ATTRIB_BYTE 0x00
 #define NO_SEL_TIMEOUT 0x00 // 1 = Controller Never Times Out, 0 = Normal V4|V3|V2|V1|P4|P3|P2|P1
 
@@ -88,12 +89,15 @@ char nvs_vehicle_names[15][21] = {"No Data", "No Data", "No Data", "No Data", "N
 char control_key_user_names[256][17] = {0};
 
 // Rokenbok Control Logic Variables
-uint8_t timeouts[8] = {false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4
-uint8_t control_keys[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};     // V1, V2, V3, V4, P1, P2, P3, P4
-uint8_t next_control_key = 2;                                                   // 0 = Unused, 1 = Physical Controller Plugged In
+uint8_t timeouts[12] = {false, false, false, false, false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
+uint8_t enable_control[12] = {false, false, false, false, false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4 // FALSE = Normal, TRUE = SP Controlled
+//uint8_t control_keys[12] = {0x19, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x00, 0x00, 0x00, 0x00}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
+uint8_t control_keys[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
+uint8_t next_control_key = 2; // 0 = Unused, 1 = Physical Controller Plugged In
 
-uint8_t selects[8] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F};                // V1, V2, V3, V4, P1, P2, P3, P4
-uint8_t enable_control[8] = {false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4 // FALSE = Normal, TRUE = SP Controlled
+uint8_t next_dpi_index = 0;
+
+uint8_t selects[12] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
 
 uint8_t share_mode = true;
 uint8_t is16sel_mode = true;
@@ -114,6 +118,16 @@ uint8_t sp_rt = 0x00;
 // uint8_t sp_share = 0x00;
 // uint8_t sp_is16SEL = 0x00;
 uint8_t sp_priority_byte = 0x00;
+
+uint8_t dpi_a[4] = {false, false, false, false};
+uint8_t dpi_b[4] = {false, false, false, false};
+uint8_t dpi_x[4] = {false, false, false, false};
+uint8_t dpi_y[4] = {false, false, false, false};
+uint8_t dpi_up[4] = {false, false, false, false};
+uint8_t dpi_down[4] = {false, false, false, false};
+uint8_t dpi_left[4] = {false, false, false, false};
+uint8_t dpi_right[4] = {false, false, false, false};
+uint8_t dpi_rt[4] = {false, false, false, false};
 
 uint8_t sp_status = 0;
 
@@ -171,7 +185,7 @@ bool contains(uint8_t array[], size_t size, uint8_t value)
 static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t control_key, uint8_t requested_vehicle)
 {
     uint8_t controller_index = 255;
-    for (uint8_t i = 0; i < 8; i++) // Search For Control Key
+    for (uint8_t i = 0; i < 12; i++) // Search For Control Key In Virtual, Physical, and Direct Packet Injection (DPI)
     {
         if (control_keys[i] == control_key) // Control Key Found
         {
@@ -181,23 +195,26 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
         }
     }
 
-    if (controller_index > 7) // Control Key Not Found
+    if (controller_index == 255) // Control Key Not Found
     {
-        for (uint8_t i = 0; i < 8; i++) // Search For Unused Controller
+        for (uint8_t i = 0; i < 12; i++) // Search For Unused Virtual or Physical Controller
         {
             if (control_keys[i] == 0) // Controller Not Currently Used
             {
                 controller_index = i;
                 control_keys[i] = control_key;
                 enable_control[i] = true;
-                enabled_controllers &= ~(0b00000001 << ((i + 4) % 8));
+                if (controller_index < 8) // Only Do This Step For Virtual and Physical Controllers
+                {
+                    enabled_controllers &= ~(0b00000001 << ((i + 4) % 8));
+                }
                 // ESP_LOGI("SP", "CONTROL KEY %i NOW ASSIGNED TO CONTROLLER %i", control_key, i);
                 break;
             }
         }
     }
 
-    if (controller_index > 7) // No Empty Spots Available
+    if (controller_index == 255) // No Empty Spots Available
     {
         ESP_LOGI("SP", "NO AVAILABLE CONTROLLERS TO ASSIGN");
         return 0xFF;
@@ -250,180 +267,294 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
         }
     }
 
-    uint8_t bitwise_index = (controller_index + 4) % 8; // Convert V1-4, P1-4 Array Index to V4|V3|V2|V1|P4|P3|P2|P1 Bitwise
-    switch (control_code)
+    if (controller_index < 8) // Virtual or Physical Controllers
     {
-    // PRESS CONTROL CODES
-    case 0x00:
-        sp_a |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        uint8_t bitwise_index = (controller_index + 4) % 8; // Convert V1-4, P1-4 Array Index to V4|V3|V2|V1|P4|P3|P2|P1 Bitwise
+        switch (control_code)
+        {
+        // PRESS CONTROL CODES
+        case 0x00:
+            sp_a |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x01:
-        sp_b |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x01:
+            sp_b |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x02:
-        sp_x |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x02:
+            sp_x |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x03:
-        sp_y |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x03:
+            sp_y |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x04:
-        sp_up |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x04:
+            sp_up |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x05:
-        sp_down |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x05:
+            sp_down |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x06:
-        sp_left |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x06:
+            sp_left |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x07:
-        sp_right |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x07:
+            sp_right |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x08:
-        sp_rt |= (0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x08:
+            sp_rt |= (0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    // UNPRESS CONTROL CODES
-    case 0x10:
-        sp_a &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        // UNPRESS CONTROL CODES
+        case 0x10:
+            sp_a &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x11:
-        sp_b &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x11:
+            sp_b &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x12:
-        sp_x &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x12:
+            sp_x &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x13:
-        sp_y &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x13:
+            sp_y &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x14:
-        sp_up &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x14:
+            sp_up &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x15:
-        sp_down &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x15:
+            sp_down &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x16:
-        sp_left &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x16:
+            sp_left &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x17:
-        sp_right &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x17:
+            sp_right &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x18:
-        sp_rt &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x18:
+            sp_rt &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x19: // Unpress All
-        sp_a &= ~(0b00000001 << bitwise_index);
-        sp_b &= ~(0b00000001 << bitwise_index);
-        sp_x &= ~(0b00000001 << bitwise_index);
-        sp_y &= ~(0b00000001 << bitwise_index);
-        sp_up &= ~(0b00000001 << bitwise_index);
-        sp_down &= ~(0b00000001 << bitwise_index);
-        sp_left &= ~(0b00000001 << bitwise_index);
-        sp_right &= ~(0b00000001 << bitwise_index);
-        sp_rt &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
-        break;
+        case 0x19: // Unpress All
+            sp_a &= ~(0b00000001 << bitwise_index);
+            sp_b &= ~(0b00000001 << bitwise_index);
+            sp_x &= ~(0b00000001 << bitwise_index);
+            sp_y &= ~(0b00000001 << bitwise_index);
+            sp_up &= ~(0b00000001 << bitwise_index);
+            sp_down &= ~(0b00000001 << bitwise_index);
+            sp_left &= ~(0b00000001 << bitwise_index);
+            sp_right &= ~(0b00000001 << bitwise_index);
+            sp_rt &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
+            break;
 
-    case 0x1A: // Release Controller
-        sp_a &= ~(0b00000001 << bitwise_index);
-        sp_b &= ~(0b00000001 << bitwise_index);
-        sp_x &= ~(0b00000001 << bitwise_index);
-        sp_y &= ~(0b00000001 << bitwise_index);
-        sp_up &= ~(0b00000001 << bitwise_index);
-        sp_down &= ~(0b00000001 << bitwise_index);
-        sp_left &= ~(0b00000001 << bitwise_index);
-        sp_right &= ~(0b00000001 << bitwise_index);
-        sp_rt &= ~(0b00000001 << bitwise_index);
-        sp_priority_byte |= (0b00000001 << bitwise_index);
+        case 0x1A: // Release Controller
+            sp_a &= ~(0b00000001 << bitwise_index);
+            sp_b &= ~(0b00000001 << bitwise_index);
+            sp_x &= ~(0b00000001 << bitwise_index);
+            sp_y &= ~(0b00000001 << bitwise_index);
+            sp_up &= ~(0b00000001 << bitwise_index);
+            sp_down &= ~(0b00000001 << bitwise_index);
+            sp_left &= ~(0b00000001 << bitwise_index);
+            sp_right &= ~(0b00000001 << bitwise_index);
+            sp_rt &= ~(0b00000001 << bitwise_index);
+            sp_priority_byte |= (0b00000001 << bitwise_index);
 
-        selects[controller_index] = 15;
-        select_changed = true;
+            selects[controller_index] = 15;
+            select_changed = true;
 
-        timeouts[controller_index] = false;
-        control_keys[controller_index] = 0;
+            timeouts[controller_index] = false;
+            control_keys[controller_index] = 0;
 
-        esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
-        break;
+            esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
+            break;
 
-    // UTILITY CONTROL CODES
-    case 0x40: // Soft Reset
-        enable_control[0] = false;
-        enable_control[1] = false;
-        enable_control[2] = false;
-        enable_control[3] = false;
-        enable_control[4] = false;
-        enable_control[5] = false;
-        enable_control[6] = false;
-        enable_control[7] = false;
+        // UTILITY CONTROL CODES
+        // case 0x40: // Soft Reset
+        //     enable_control[0] = false;
+        //     enable_control[1] = false;
+        //     enable_control[2] = false;
+        //     enable_control[3] = false;
+        //     enable_control[4] = false;
+        //     enable_control[5] = false;
+        //     enable_control[6] = false;
+        //     enable_control[7] = false;
 
-        enabled_controllers = 0xFF;
+        //     enabled_controllers = 0xFF;
 
-        selects[0] = 0x0F;
-        selects[1] = 0x0F;
-        selects[2] = 0x0F;
-        selects[3] = 0x0F;
-        selects[4] = 0x0F;
-        selects[5] = 0x0F;
-        selects[6] = 0x0F;
-        selects[7] = 0x0F;
+        //     selects[0] = 0x0F;
+        //     selects[1] = 0x0F;
+        //     selects[2] = 0x0F;
+        //     selects[3] = 0x0F;
+        //     selects[4] = 0x0F;
+        //     selects[5] = 0x0F;
+        //     selects[6] = 0x0F;
+        //     selects[7] = 0x0F;
 
-        sp_a = 0x00;
-        sp_b = 0x00;
-        sp_x = 0x00;
-        sp_y = 0x00;
-        sp_up = 0x00;
-        sp_down = 0x00;
-        sp_right = 0x00;
-        sp_left = 0x00;
-        sp_rt = 0x00;
+        //     sp_a = 0x00;
+        //     sp_b = 0x00;
+        //     sp_x = 0x00;
+        //     sp_y = 0x00;
+        //     sp_up = 0x00;
+        //     sp_down = 0x00;
+        //     sp_right = 0x00;
+        //     sp_left = 0x00;
+        //     sp_rt = 0x00;
 
-        sp_priority_byte = 0xFF;
+        //     sp_priority_byte = 0xFF;
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        break;
+        //     vTaskDelay(pdMS_TO_TICKS(1000));
+        //     break;
 
-    case 0x41: // Hard Reset the ESP
-        esp_restart();
-        break;
-
-    default:
-        break;
+        // case 0x41: // Hard Reset the ESP
+        //     esp_restart();
+        //     break;
+        default:
+            break;
+        }
     }
+    else if (controller_index < 12) // Direct Packet Injection
+    {
+        uint8_t dpi_index = controller_index - 8;
+        switch (control_code)
+        {
+        // PRESS CONTROL CODES
+        case 0x00:
+            dpi_a[dpi_index] = true;
+            break;
 
+        case 0x01:
+            dpi_b[dpi_index] = true;
+            break;
+
+        case 0x02:
+            dpi_x[dpi_index] = true;
+            break;
+
+        case 0x03:
+            dpi_y[dpi_index] = true;
+            break;
+
+        case 0x04:
+            dpi_up[dpi_index] = true;
+            break;
+
+        case 0x05:
+            dpi_down[dpi_index] = true;
+            break;
+
+        case 0x06:
+            dpi_left[dpi_index] = true;
+            break;
+
+        case 0x07:
+            dpi_right[dpi_index] = true;
+            break;
+
+        case 0x08:
+            dpi_rt[dpi_index] = true;
+            break;
+
+        // UNPRESS CONTROL CODES
+        case 0x10:
+            dpi_a[dpi_index] = false;
+            break;
+
+        case 0x11:
+            dpi_b[dpi_index] = false;
+            break;
+
+        case 0x12:
+            dpi_x[dpi_index] = false;
+            break;
+
+        case 0x13:
+            dpi_y[dpi_index] = false;
+            break;
+
+        case 0x14:
+            dpi_up[dpi_index] = false;
+            break;
+
+        case 0x15:
+            dpi_down[dpi_index] = false;
+            break;
+
+        case 0x16:
+            dpi_left[dpi_index] = false;
+            break;
+
+        case 0x17:
+            dpi_right[dpi_index] = false;
+            break;
+
+        case 0x18:
+            dpi_rt[dpi_index] = false;
+            break;
+
+        case 0x19: // Unpress All
+            dpi_a[dpi_index] = false;
+            dpi_b[dpi_index] = false;
+            dpi_x[dpi_index] = false;
+            dpi_y[dpi_index] = false;
+            dpi_up[dpi_index] = false;
+            dpi_down[dpi_index] = false;
+            dpi_left[dpi_index] = false;
+            dpi_right[dpi_index] = false;
+            dpi_rt[dpi_index] = false;
+            break;
+
+        case 0x1A: // Release Controller
+            dpi_a[dpi_index] = false;
+            dpi_b[dpi_index] = false;
+            dpi_x[dpi_index] = false;
+            dpi_y[dpi_index] = false;
+            dpi_up[dpi_index] = false;
+            dpi_down[dpi_index] = false;
+            dpi_left[dpi_index] = false;
+            dpi_right[dpi_index] = false;
+            dpi_rt[dpi_index] = false;
+
+            selects[controller_index] = 15;
+            select_changed = true;
+
+            timeouts[controller_index] = false;
+            control_keys[controller_index] = 0;
+
+            esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
+            break;
+        }
+    }
+    
     if (select_changed)
     {
         return selects[controller_index];
@@ -497,7 +628,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
         }
         else if (ws_pkt.payload[0] == 0xC0) // Request For Status Data
         {
-            static uint8_t send_data[18];
+            static uint8_t send_data[26];
             send_data[0] = 0xC0;
             send_data[1] = sp_status;
             send_data[2] = selects[0];
@@ -508,17 +639,25 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             send_data[7] = selects[5];
             send_data[8] = selects[6];
             send_data[9] = selects[7];
-            send_data[10] = control_keys[0];
-            send_data[11] = control_keys[1];
-            send_data[12] = control_keys[2];
-            send_data[13] = control_keys[3];
-            send_data[14] = control_keys[4];
-            send_data[15] = control_keys[5];
-            send_data[16] = control_keys[6];
-            send_data[17] = control_keys[7];
+            send_data[10] = selects[8];
+            send_data[11] = selects[9];
+            send_data[12] = selects[10];
+            send_data[13] = selects[11];
+            send_data[14] = control_keys[0];
+            send_data[15] = control_keys[1];
+            send_data[16] = control_keys[2];
+            send_data[17] = control_keys[3];
+            send_data[18] = control_keys[4];
+            send_data[19] = control_keys[5];
+            send_data[20] = control_keys[6];
+            send_data[21] = control_keys[7];
+            send_data[22] = control_keys[8];
+            send_data[23] = control_keys[9];
+            send_data[24] = control_keys[10];
+            send_data[25] = control_keys[11];
             httpd_ws_frame_t send_pkt;
             memset(&send_pkt, 0, sizeof(httpd_ws_frame_t));
-            send_pkt.len = 18;
+            send_pkt.len = 26;
             send_pkt.type = HTTPD_WS_TYPE_BINARY;
             send_pkt.payload = send_data;
             httpd_ws_send_frame(req, &send_pkt);
@@ -585,18 +724,21 @@ static esp_err_t websocket_handler(httpd_req_t *req)
         }
         else if (ws_pkt.payload[0] == 0xC4) // Request For User Names
         {
-            // 1 For "0xC4" plus 9 delimiters.
+            // 1 For "0xC4" plus 13 delimiters.
             uint16_t total_length = 1 + strlen(control_key_user_names[control_keys[0]]) + strlen(control_key_user_names[control_keys[1]]) +
                                     strlen(control_key_user_names[control_keys[2]]) + strlen(control_key_user_names[control_keys[3]]) +
                                     strlen(control_key_user_names[control_keys[4]]) + strlen(control_key_user_names[control_keys[5]]) +
-                                    strlen(control_key_user_names[control_keys[6]]) + strlen(control_key_user_names[control_keys[7]]) + 9;
+                                    strlen(control_key_user_names[control_keys[6]]) + strlen(control_key_user_names[control_keys[7]]) +
+                                    strlen(control_key_user_names[control_keys[8]]) + strlen(control_key_user_names[control_keys[9]]) +
+                                    strlen(control_key_user_names[control_keys[10]]) + strlen(control_key_user_names[control_keys[11]]) + 13;
 
             char combined_string[total_length + 1];
 
-            snprintf(combined_string, sizeof(combined_string), "X=%s=%s=%s=%s=%s=%s=%s=%s=",
-                     control_key_user_names[control_keys[0]], control_key_user_names[control_keys[1]], control_key_user_names[control_keys[2]],
-                     control_key_user_names[control_keys[3]], control_key_user_names[control_keys[4]], control_key_user_names[control_keys[5]],
-                     control_key_user_names[control_keys[6]], control_key_user_names[control_keys[7]]);
+            snprintf(combined_string, sizeof(combined_string), "X=%s=%s=%s=%s=%s=%s=%s=%s=%s=%s=%s=%s=",
+                    control_key_user_names[control_keys[0]], control_key_user_names[control_keys[1]], control_key_user_names[control_keys[2]],
+                    control_key_user_names[control_keys[3]], control_key_user_names[control_keys[4]], control_key_user_names[control_keys[5]],
+                    control_key_user_names[control_keys[6]], control_key_user_names[control_keys[7]], control_key_user_names[control_keys[8]],
+                    control_key_user_names[control_keys[9]], control_key_user_names[control_keys[10]], control_key_user_names[control_keys[11]]);
             combined_string[0] = 0xC4;
 
             httpd_ws_frame_t send_pkt;
@@ -1528,7 +1670,38 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_current_series = PKT_INJECT_SERIES;
                 spi_series_count = 1;
-                send_byte = 0b00011000; // First Half Packet
+
+                // Generate First Half of DPI Packet (SEL3, SEL2, SEL1, SEL0, UP, DOWN, RIGHT, LEFT)
+                uint8_t original_index = next_dpi_index;
+                uint8_t valid_found = false;
+                do {
+                    next_dpi_index = (next_dpi_index + 1) % 4;
+
+                    // A DPI should only be broadcast if it has a selection and isn't the same as another V/P/D controller selection.
+                    if (selects[next_dpi_index + 8] != 0x0F && !contains(selects, 8, selects[next_dpi_index + 8])) {
+                        valid_found = true;
+                        break;  // Found the valid next index
+                    }
+
+                } while (next_dpi_index != original_index);  // Stop if we've wrapped around back to the original index
+
+                if (valid_found) { // Only generate a send_byte if a valid controller was found
+                    send_byte = (selects[next_dpi_index + 8] + 1) << 4;
+                    if (dpi_up[next_dpi_index]) {
+                        send_byte |= 0b00001000;
+                    }
+                    if (dpi_down[next_dpi_index]) {
+                        send_byte |= 0b00000100;
+                    }
+                    if (dpi_right[next_dpi_index]) {
+                        send_byte |= 0b00000010;
+                    }
+                    if (dpi_left[next_dpi_index]) {
+                        send_byte |= 0b00000001;
+                    }
+                } else {
+                    send_byte = 0b00000000; // Send NULL Upper Half
+                }
             }
             else
             {
@@ -1544,6 +1717,12 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_series_count = 2;
                 send_byte = ENABLE_ATTRIB_BYTE;
+                for (uint8_t i = 8; i < 12; i++) { // Only enable DPI if needed.
+                    if (selects[i] != 0x0F) {
+                        send_byte = PACKET_INJECT_ATTRIB_BYTE;
+                        break;
+                    }
+                }
             }
             else if (spi_series_count == 2)
             {
@@ -1853,7 +2032,25 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_current_series = NO_SERIES;
                 spi_series_count = 0;
-                send_byte = 0b00000000; // Second Half Packet
+
+                // Generate First Half of DPI Packet (A, B, X, Y, A', B', RT, ?)
+                send_byte = 0b00000000;
+
+                if (dpi_a[next_dpi_index]) {
+                    send_byte |= 0b10000000;
+                }
+                if (dpi_b[next_dpi_index]) {
+                    send_byte |= 0b01000000;
+                }
+                if (dpi_x[next_dpi_index]) {
+                    send_byte |= 0b00100000;
+                }
+                if (dpi_y[next_dpi_index]) {
+                    send_byte |= 0b00010000;
+                }
+                if (dpi_rt[next_dpi_index]) {
+                    send_byte |= 0b00000010;
+                }
             }
         }
         // CATCH ALL
@@ -2389,6 +2586,24 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
         }
         timeouts[i] = false;
     }
+    for (uint8_t i = 8; i < 12; i++)
+    {
+        if ((control_keys[i] > 0) && (timeouts[i] == false)) // "If that controller was being used and hasn't been used in this timeout cycle."
+        {
+            control_keys[i] = 0;
+            selects[i] = 0x0F;
+            dpi_a[i - 8] = false;
+            dpi_b[i - 8] = false;
+            dpi_x[i - 8] = false;
+            dpi_y[i - 8] = false;
+            dpi_up[i - 8] = false;
+            dpi_down[i - 8] = false;
+            dpi_left[i - 8] = false;
+            dpi_right[i - 8] = false;
+            dpi_rt[i - 8] = false;
+        }
+        timeouts[i] = false;
+    }
 
     esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
 
@@ -2401,12 +2616,15 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
 static void IRAM_ATTR post_timeout_timer_callback(void *arg)
 {
     // ESP_LOGI("TIMER", "POST TIMEOUT");
-    for (uint8_t i = 0; i < 8; i++)
+    for (uint8_t i = 0; i < 12; i++)
     {
         if (control_keys[i] == 0)
         {
             enable_control[i] = false;
-            enabled_controllers |= (0b00000001 << ((i + 4) % 8));
+            if (i < 8) // Only For Virtual and Physical Controllers
+            {
+                enabled_controllers |= (0b00000001 << ((i + 4) % 8));
+            }
         }
     }
 }
