@@ -961,6 +961,7 @@
                         document.querySelector(`.CTRL${controller_num + 1} .CTR`).style.backgroundColor = ctrColors[assigned_controllers[controller_num]];
                     }
                 }
+
             // First byte 0xC1 indicates a new control key has been assigned.
             } else if (data_array[0] == 0xC1 && data_array.length > 2) {
                 if ((data_array[1] >= 0) && (data_array[1] <= 8)) {
@@ -986,6 +987,7 @@
                 string_parts_array.pop();
 
                 user_names = string_parts_array;
+                
             // First byte 0xC5 indicates admin data has been received.
             } else if (data_array[0] == 0xC5) {
                 //share_mode = data_array[1];

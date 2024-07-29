@@ -216,7 +216,11 @@
         .PC1,
         .PC2,
         .PC3,
-        .PC4 {
+        .PC4,
+        .DC1,
+        .DC2,
+        .DC3,
+        .DC4 {
             display: inline-block;
             width: 40px;
             height: 40px;
@@ -227,6 +231,13 @@
             line-height: 40px;
             font-size: 20px;
             outline-offset: -5px;
+        }
+
+        .DC1,
+        .DC2,
+        .DC3,
+        .DC4 {
+            display: inline-block;
         }
 
         .eight_controller_container {
@@ -558,6 +569,10 @@
                 <div class='PC2'>P2</div>
                 <div class='PC3'>P3</div>
                 <div class='PC4'>P4</div>
+                <div class='DC1'>D1</div>
+                <div class='DC2'>D2</div>
+                <div class='DC3'>D3</div>
+                <div class='DC4'>D4</div>
             </div>
         </div>
     </div>
@@ -611,12 +626,13 @@
 
         let is16sel_mode = true; // True = 15 vehicles, False = 8 vehicles.
 
-        const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4', 'N/C']; // Used to display readable controller names based on index.
-        const ctrColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#ccc'] // Controller colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
-        const ctrButtonColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#adadad'] // Controller button colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
+        const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4', 'D1', 'D2', 'D3', 'D4', 'N/C']; // Used to display readable controller names based on index.
+        //const ctrColors = ['#99ccff', '#6ce0e0', '#c4ff4d', '#ffff33', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#ff9999', '#ffa500', '#ccff33', '#66ff66', '#ccc'] // Controller colors (V1-V4, P1-P4, D1-D4, N/C).  Based on Rokenbok control key colors.
+        const ctrColors = ['#99ccff', '#6ce0e0', '#c4ff4d', '#ffff33', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#999999', '#808080', '#666666', '#4d4d4d', '#ccc'] // Controller colors (V1-V4, P1-P4, D1-D4, N/C).  Based on Rokenbok control key colors.
+        const ctrButtonColors = ['#99ccff', '#6ce0e0', '#c4ff4d', '#ffff33', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#999999', '#808080', '#666666', '#4d4d4d', '#adadad'] // Controller button colors (V1-V4, P1-P4, D1-D4, N/C).  Based on Rokenbok control key colors.
         
         let vehicle_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
-        let user_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
+        let user_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
         
         let assigned_controller = 8;
         let control_key = 0;
@@ -690,7 +706,7 @@
                     document.querySelector(`.V${i} .top-right`).style.backgroundColor = '#ccc';
                     document.querySelector(`.V${i} .bottom-right`).style.backgroundColor = '#ccc';
                 }
-                for (let i = 2; i < 10; i++) { // Controller Select Bytes
+                for (let i = 2; i < 14; i++) { // Controller Select Bytes
                     vehicle = data_array[i] + 1;
                     if ((vehicle > 0) && (vehicle < 16)) {
                         if (timesVehicleSelected[data_array[i]] == 0) {
@@ -716,22 +732,22 @@
                 }
                 for (let i = 1; i < 5; i++) { // Virtual Controller Control Keys
                     document.querySelector(`.VC${i}`).style.outline = "0px solid black";
-                    if (data_array[i + 9] == 0) {
+                    if (data_array[i + 13] == 0) {
                         document.querySelector(`.VC${i}`).style.backgroundColor = '#ccc';
                     } else {
                         document.querySelector(`.VC${i}`).style.backgroundColor = ctrColors[i - 1];
-                        if (control_key == data_array[i + 9]) {
+                        if (control_key == data_array[i + 13]) {
                             document.querySelector(`.VC${i}`).style.outline = "3px solid black";
                         }
                     }
                 }
                 for (let i = 1; i < 5; i++) { // Physical Controller Control Keys
                     document.querySelector(`.PC${i}`).style.outline = "0px solid black";
-                    if (data_array[i + 13] == 0) {
+                    if (data_array[i + 17] == 0) {
                         document.querySelector(`.PC${i}`).style.backgroundColor = '#ccc';
                     } else {
                         document.querySelector(`.PC${i}`).style.backgroundColor = ctrColors[i + 3];
-                        if (control_key == data_array[i + 13]) {
+                        if (control_key == data_array[i + 17]) {
                             document.querySelector(`.PC${i}`).style.outline = "3px solid black";
                         }
                         if (data_array[i + 13] == 1) {
@@ -739,12 +755,36 @@
                         }
                 }
                 }
+                let any_dpi_used = false;
+                for (let i = 1; i < 5; i++) { // DPI Controller Control Keys
+                    document.querySelector(`.DC${i}`).style.outline = "0px solid black";
+                    if (data_array[i + 21] == 0) {
+                        document.querySelector(`.DC${i}`).style.backgroundColor = '#ccc';
+                    } else {
+                        document.querySelector(`.DC${i}`).style.backgroundColor = ctrColors[i + 7];
+                        if (control_key == data_array[i + 21]) {
+                            document.querySelector(`.DC${i}`).style.outline = "3px solid black";
+                        }
+                        any_dpi_used = true;
+                    }
+                }
+                if (any_dpi_used) {
+                    document.querySelector(`.DC1`).style.display = "inline-block";
+                    document.querySelector(`.DC2`).style.display = "inline-block";
+                    document.querySelector(`.DC3`).style.display = "inline-block";
+                    document.querySelector(`.DC4`).style.display = "inline-block";
+                } else {
+                    document.querySelector(`.DC1`).style.display = "none";
+                    document.querySelector(`.DC2`).style.display = "none";
+                    document.querySelector(`.DC3`).style.display = "none";
+                    document.querySelector(`.DC4`).style.display = "none";
+                }
                 // Determine Which Rokenbok Controller is Assigned to Each Web Controller
-                assigned_controller = 8;  // Reset All Assigned Controllers to 8 (No Controller)
+                assigned_controller = 12;  // Reset All Assigned Controllers to 8 (No Controller)
                 if (control_key != 0) {
-                    for (let i = 10; i < 18; i++) {
+                    for (let i = 14; i < 26; i++) {
                         if (data_array[i] == control_key) {
-                            assigned_controller = i - 10; // Store the current controller for the purposes of button coloring in other parts of the code.
+                            assigned_controller = i - 14; // Store the current controller for the purposes of button coloring in other parts of the code.
                             break;
                         }
                     }
@@ -758,7 +798,7 @@
                     control_key = data_array[2];
                 }
 
-                // First byte 0xC2 indicates vehicle names have been received.
+            // First byte 0xC2 indicates vehicle names have been received.
             } else if (data_array[0] == 0xC2) {
                 const decoder = new TextDecoder('utf-8');
                 let stringed_data_array = decoder.decode(data_array);
@@ -768,7 +808,7 @@
 
                 vehicle_names = string_parts_array;
 
-                // First byte 0xC4 indicates user names have been received.
+            // First byte 0xC4 indicates user names have been received.
             } else if (data_array[0] == 0xC4) {
                 const decoder = new TextDecoder('utf-8');
                 let stringed_data_array = decoder.decode(data_array);
@@ -777,6 +817,8 @@
                 string_parts_array.pop();
 
                 user_names = string_parts_array;
+
+            // First byte 0xC5 indicates admin data has been received.
             } else if (data_array[0] == 0xC5) {
                 //share_mode = data_array[1];
                 is16sel_mode = data_array[2];
@@ -830,68 +872,68 @@
         
         function buttonPressed(buttonId) {
             if (buttonId === "left") {
-                console.log("Left button pressed.");
+                //console.log("Left button pressed.");
                 sendControlData(0x06);
             } else if (buttonId === "up") {
-                console.log("Up button pressed.");
+                //console.log("Up button pressed.");
                 sendControlData(0x04);
             } else if (buttonId === "right") {
-                console.log("Right button pressed.");
+                //console.log("Right button pressed.");
                 sendControlData(0x07);
             } else if (buttonId === "down") {
-                console.log("Down button pressed.");
+                //console.log("Down button pressed.");
                 sendControlData(0x05);
             } else if (buttonId === "lt") {
-                console.log("LT button pressed.");
+                //console.log("LT button pressed.");
                 sendControlData(0x08);
             } else if (buttonId === "rt") {
-                console.log("RT button pressed.");
+                //console.log("RT button pressed.");
                 sendControlData(0x08);
             } else if (buttonId === "x") {
-                console.log("X button pressed.");
+                //console.log("X button pressed.");
                 sendControlData(0x02);
             } else if (buttonId === "y") {
-                console.log("Y button pressed.");
+                //console.log("Y button pressed.");
                 sendControlData(0x03);
             } else if (buttonId === "b") {
-                console.log("B button pressed.");
+                //console.log("B button pressed.");
                 sendControlData(0x01);
             } else if (buttonId === "a") {
-                console.log("A button pressed.");
+                //console.log("A button pressed.");
                 sendControlData(0x00);
             }
         }
 
         function buttonReleased(buttonId) {
             if (buttonId === "left") {
-                console.log("Left button released.");
+                //console.log("Left button released.");
                 sendControlData(0x16);
             } else if (buttonId === "up") {
-                console.log("Up button released.");
+                //console.log("Up button released.");
                 sendControlData(0x14);
             } else if (buttonId === "right") {
-                console.log("Right button released.");
+                //console.log("Right button released.");
                 sendControlData(0x17);
             } else if (buttonId === "down") {
-                console.log("Down button released.");
+                //console.log("Down button released.");
                 sendControlData(0x15);
             } else if (buttonId === "lt") {
-                console.log("LT button released.");
+                //console.log("LT button released.");
                 sendControlData(0x18);
             } else if (buttonId === "rt") {
-                console.log("RT button released.");
+                //console.log("RT button released.");
                 sendControlData(0x18);
             } else if (buttonId === "x") {
-                console.log("X button released.");
+                //console.log("X button released.");
                 sendControlData(0x12);
             } else if (buttonId === "y") {
-                console.log("Y button released.");
+                //console.log("Y button released.");
                 sendControlData(0x13);
             } else if (buttonId === "b") {
-                console.log("B button released.");
+                //console.log("B button released.");
                 sendControlData(0x11);
             } else if (buttonId === "a") {
-                console.log("A button released.");
+                //console.log("A button released.");
                 sendControlData(0x10);
             }
         }
@@ -977,6 +1019,20 @@
                 ControllerDiv.addEventListener('touchstart', function () {
                     if (user_names[i + 3]) {
                         controllerStatusTextDiv.textContent = user_names[i + 3];
+                    } else {
+                        controllerStatusTextDiv.textContent = "None";
+                    }
+                });
+
+                ControllerDiv.addEventListener('touchend', function () {
+                    controllerStatusTextDiv.textContent = "Controller Status";
+                });
+            }
+            ControllerDiv = document.querySelector(`.DC${i}`);
+            if (ControllerDiv) {
+                ControllerDiv.addEventListener('touchstart', function () {
+                    if (user_names[i + 7]) {
+                        controllerStatusTextDiv.textContent = user_names[i + 7];
                     } else {
                         controllerStatusTextDiv.textContent = "None";
                     }
