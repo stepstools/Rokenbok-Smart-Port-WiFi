@@ -211,7 +211,11 @@
         .PC1,
         .PC2,
         .PC3,
-        .PC4 {
+        .PC4,
+        .DC1,
+        .DC2,
+        .DC3,
+        .DC4 {
             display: inline-block;
             width: 40px;
             height: 40px;
@@ -222,6 +226,13 @@
             line-height: 40px;
             font-size: 20px;
             outline-offset: -5px;
+        }
+
+        .DC1,
+        .DC2,
+        .DC3,
+        .DC4 {
+            display: none;
         }
 
         .eight_controller_container {
@@ -560,6 +571,10 @@
                 <div class='PC2'>P2</div>
                 <div class='PC3'>P3</div>
                 <div class='PC4'>P4</div>
+                <div class='DC1'>D1</div>
+                <div class='DC2'>D2</div>
+                <div class='DC3'>D3</div>
+                <div class='DC4'>D4</div>
             </div>
         </div>
     </div>
@@ -763,12 +778,13 @@
         let keyboardActive = false; // Tracks if the keyboard is currently enabled.
         let displayedControllers = 0; // Tracks how many controllers are displayed so the welcome message can be displayed if no controllers are.
 
-        const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4', 'N/C']; // Used to display readable controller names based on index.
-        const ctrColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#ccc'] // Controller colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
-        const ctrButtonColors = ['#99ccff', '#71dada', '#ccff66', '#ffff4d', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#adadad'] // Controller button colors (V1-V4, P1-P4, N/C).  Based on Rokenbok control key colors.
+        const ctrValue_text = ['V1', 'V2', 'V3', 'V4', 'P1', 'P2', 'P3', 'P4', 'D1', 'D2', 'D3', 'D4', 'N/C']; // Used to display readable controller names based on index.
+        //const ctrColors = ['#99ccff', '#6ce0e0', '#c4ff4d', '#ffff33', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#ff9999', '#ffa500', '#ccff33', '#66ff66', '#ccc'] // Controller colors (V1-V4, P1-P4, D1-D4, N/C).  Based on Rokenbok control key colors.
+        const ctrColors = ['#99ccff', '#6ce0e0', '#c4ff4d', '#ffff33', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#999999', '#808080', '#666666', '#4d4d4d', '#ccc'] // Controller colors (V1-V4, P1-P4, D1-D4, N/C).  Based on Rokenbok control key colors.
+        const ctrButtonColors = ['#99ccff', '#6ce0e0', '#c4ff4d', '#ffff33', '#ff8533', '#ff3366', '#cc66cc', '#751aff', '#999999', '#808080', '#666666', '#4d4d4d', '#adadad'] // Controller button colors (V1-V4, P1-P4, D1-D4, N/C).  Based on Rokenbok control key colors.
 
         let vehicle_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
-        let user_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
+        let user_names = ["No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data", "No Data"] // Pulled from the server once the websocket opens.
 
         let assigned_controllers = [8, 8, 8, 8, 8, 8, 8, 8, 8] // Rokenbok Controllers Assigned to Each Controller (Gamepad 1-8, Keyboard), 8 = Not Assigned
         let control_keys = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Control Keys Assigned to Each Controller (Gamepad 1-8, Keyboard)
@@ -858,7 +874,7 @@
                     document.querySelector(`.V${i} .top-right`).style.backgroundColor = '#ccc';
                     document.querySelector(`.V${i} .bottom-right`).style.backgroundColor = '#ccc';
                 }
-                for (let i = 2; i < 10; i++) { // Controller Select Bytes
+                for (let i = 2; i < 14; i++) { // Controller Select Bytes
                     vehicle = data_array[i] + 1;
                     if ((vehicle > 0) && (vehicle < 16)) {
                         if (timesVehicleSelected[data_array[i]] == 0) {
@@ -884,22 +900,22 @@
                 }
                 for (let i = 1; i < 5; i++) { // Virtual Controller Control Keys
                     document.querySelector(`.VC${i}`).style.outline = "0px solid black";
-                    if (data_array[i + 9] == 0) {
+                    if (data_array[i + 13] == 0) {
                         document.querySelector(`.VC${i}`).style.backgroundColor = '#ccc';
                     } else {
                         document.querySelector(`.VC${i}`).style.backgroundColor = ctrColors[i - 1];
-                        if (control_keys.includes(data_array[i + 9])) {
+                        if (control_keys.includes(data_array[i + 13])) {
                             document.querySelector(`.VC${i}`).style.outline = "3px solid black";
                         }
                     }
                 }
                 for (let i = 1; i < 5; i++) { // Physical Controller Control Keys
                     document.querySelector(`.PC${i}`).style.outline = "0px solid black";
-                    if (data_array[i + 13] == 0) {
+                    if (data_array[i + 17] == 0) {
                         document.querySelector(`.PC${i}`).style.backgroundColor = '#ccc';
                     } else {
                         document.querySelector(`.PC${i}`).style.backgroundColor = ctrColors[i + 3];
-                        if (control_keys.includes(data_array[i + 13])) {
+                        if (control_keys.includes(data_array[i + 17])) {
                             document.querySelector(`.PC${i}`).style.outline = "3px solid black";
                         }
                         if (data_array[i + 13] == 1) {
@@ -907,12 +923,37 @@
                         }
                     }
                 }
+                let any_dpi_used = false;
+                for (let i = 1; i < 5; i++) { // DPI Controller Control Keys
+                    document.querySelector(`.DC${i}`).style.outline = "0px solid black";
+                    if (data_array[i + 21] == 0) {
+                        document.querySelector(`.DC${i}`).style.backgroundColor = '#ccc';
+                    } else {
+                        document.querySelector(`.DC${i}`).style.backgroundColor = ctrColors[i + 7];
+                        if (control_keys.includes(data_array[i + 21])) {
+                            document.querySelector(`.DC${i}`).style.outline = "3px solid black";
+                        }
+                        any_dpi_used = true;
+                    }
+                }
+                if (any_dpi_used) {
+                    document.querySelector(`.DC1`).style.display = "inline-block";
+                    document.querySelector(`.DC2`).style.display = "inline-block";
+                    document.querySelector(`.DC3`).style.display = "inline-block";
+                    document.querySelector(`.DC4`).style.display = "inline-block";
+                } else {
+                    document.querySelector(`.DC1`).style.display = "none";
+                    document.querySelector(`.DC2`).style.display = "none";
+                    document.querySelector(`.DC3`).style.display = "none";
+                    document.querySelector(`.DC4`).style.display = "none";
+                }
+
                 for (let controller_num = 0; controller_num < 9; controller_num++) { // Determine Which Rokenbok Controller is Assigned to Each Web Controller
-                    assigned_controllers[controller_num] = 8;  // Reset All Assigned Controllers to 8 (No Controller)
+                    assigned_controllers[controller_num] = 12;  // Reset All Assigned Controllers to 12 (No Controller)
                     if (control_keys[controller_num] != 0) {
-                        for (let i = 10; i < 18; i++) {
+                        for (let i = 14; i < 26; i++) {
                             if (data_array[i] == control_keys[controller_num]) {
-                                assigned_controllers[controller_num] = i - 10; // Store the current controller for the purposes of button coloring in other parts of the code.
+                                assigned_controllers[controller_num] = i - 14; // Store the current controller for the purposes of button coloring in other parts of the code.
                                 break;
                             }
                         }
