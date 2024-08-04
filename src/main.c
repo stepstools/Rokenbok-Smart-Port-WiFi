@@ -101,7 +101,7 @@ uint8_t selects[12] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0
 
 uint8_t share_mode = true;
 uint8_t is16sel_mode = true;
-uint8_t controller_timeout = 30;
+uint8_t controller_timeout = 10;
 
 uint8_t enabled_controllers = 0b11111111; // V4|V3|V2|V1|P4|P3|P2|P1 // 0 = Enabled, 1 = Disabled
 uint8_t sp_a = 0x00;                      // V4|V3|V2|V1|P4|P3|P2|P1
