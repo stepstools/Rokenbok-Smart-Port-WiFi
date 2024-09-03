@@ -1248,6 +1248,22 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
             nvs_set_u8(nvs_handle, "cont_timeout", controller_timeout);
 
+            for (uint8_t i = 0; i < 15; i++) { // Convert percent encoded values back to special characters.
+                char *src = rec_names[i];
+                char *dst = rec_names[i];
+                while (*src) {
+                    if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2])) {
+                        int value;
+                        sscanf(src + 1, "%2x", &value); // Convert hex digits to a character
+                        *dst++ = (char)value;
+                        src += 3; // Move past "%XX"
+                    } else {
+                        *dst++ = *src++; // Copy regular characters
+                    }
+                }
+                *dst = '\0'; // Null-terminate the result string
+            }
+
             nvs_set_str(nvs_handle, "v1_name", rec_names[0]);
             nvs_set_str(nvs_handle, "v2_name", rec_names[1]);
             nvs_set_str(nvs_handle, "v3_name", rec_names[2]);
