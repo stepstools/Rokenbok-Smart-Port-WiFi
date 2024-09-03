@@ -1884,13 +1884,13 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_series_count = 15; // RESERVED FOR A' (RT+A) (0 when plugged in, 1 when not)
                 // spi_rec_tpads[13] = recv_byte;
-                send_byte = recv_byte;
+                send_byte = (recv_byte & enabled_controllers) | (sp_rt & sp_a);
             }
             else if (spi_series_count == 15)
             {
                 spi_series_count = 16; // RESERVED FOR B' (RT+B) (0 when plugged in, 1 when not)
                 // spi_rec_tpads[14] = recv_byte;
-                send_byte = recv_byte;
+                send_byte = (recv_byte & enabled_controllers) | (sp_rt & sp_b);
             }
             else if (spi_series_count == 16)
             {
