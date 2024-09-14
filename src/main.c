@@ -1876,13 +1876,13 @@ static void IRAM_ATTR spi_task(void *arg)
             {
                 spi_series_count = 11; // A
                 // spi_rec_tpads[9] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_a;
+                send_byte = (recv_byte & enabled_controllers) | (~sp_rt & sp_a);
             }
             else if (spi_series_count == 11)
             {
                 spi_series_count = 12; // B
                 // spi_rec_tpads[10] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_b;
+                send_byte = (recv_byte & enabled_controllers) | (~sp_rt & sp_b);
             }
             else if (spi_series_count == 12)
             {
