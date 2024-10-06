@@ -1,5 +1,6 @@
 idf_component_register(SRCS "main.c"
-                    INCLUDE_DIRS ".")
+                    INCLUDE_DIRS "."
+                    REQUIRES driver)
 target_add_binary_data(${COMPONENT_TARGET} "embed/favicon.ico" BINARY)
 target_add_binary_data(${COMPONENT_TARGET} "embed/bankgothicbold.ttf" BINARY)
 target_add_binary_data(${COMPONENT_TARGET} "embed/index.html" TEXT)
