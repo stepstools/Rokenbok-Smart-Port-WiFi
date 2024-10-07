@@ -186,32 +186,32 @@ bool contains(uint8_t array[], size_t size, uint8_t value)
 /// @param evt Event to handle.
 /// @return Error Code
 esp_err_t http_client_event_handler(esp_http_client_event_t *evt) {
-    switch(evt->event_id) {
-        case HTTP_EVENT_ERROR:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ERROR");
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_CONNECTED");
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_HEADER_SENT");
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-            break;
-        case HTTP_EVENT_ON_DATA:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_FINISH");
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_DISCONNECTED");
-            break;
-        case HTTP_EVENT_REDIRECT:
-            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_REDIRECT");
-            break;
-    }
+    // switch(evt->event_id) {
+    //     case HTTP_EVENT_ERROR:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ERROR");
+    //         break;
+    //     case HTTP_EVENT_ON_CONNECTED:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_CONNECTED");
+    //         break;
+    //     case HTTP_EVENT_HEADER_SENT:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_HEADER_SENT");
+    //         break;
+    //     case HTTP_EVENT_ON_HEADER:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+    //         break;
+    //     case HTTP_EVENT_ON_DATA:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+    //         break;
+    //     case HTTP_EVENT_ON_FINISH:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_FINISH");
+    //         break;
+    //     case HTTP_EVENT_DISCONNECTED:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_DISCONNECTED");
+    //         break;
+    //     case HTTP_EVENT_REDIRECT:
+    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_REDIRECT");
+    //         break;
+    // }
     return ESP_OK;
 }
 
@@ -1404,10 +1404,6 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
 
     if (strcmp(rec_admin_password, nvs_admin_password) == 0)
     {
-        const char response[] = "Entered admin password was correct and the firmware update has begun.\n"
-                                "Click <a href='admin'>here</a> to return to the admin page.";
-        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
-
         esp_err_t err;
         esp_ota_handle_t update_handle = 0 ;
         const esp_partition_t *update_partition = NULL;
@@ -1441,7 +1437,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
 
         int binary_file_len = 0;
         int data_read;
-        char ota_write_data[1024];
+        char ota_write_data[512];
         while ((data_read = esp_http_client_read(client, ota_write_data, sizeof(ota_write_data))) > 0) {
             err = esp_ota_write(update_handle, (const void *)ota_write_data, data_read);
             if (err != ESP_OK) {
@@ -1451,7 +1447,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
                 return err;
             }
             binary_file_len += data_read;
-            ESP_LOGI("OTA", "Written image length %d", binary_file_len);
+            //ESP_LOGI("OTA", "Written image length %d", binary_file_len);
         }
 
         if (data_read < 0) {
@@ -1473,6 +1469,10 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
             ESP_LOGE("OTA", "esp_ota_set_boot_partition failed! err=0x%x", err);
             return err;
         }
+
+        const char response[] = "Entered admin password was correct and the firmware update has completed.\n"
+                                "Click <a href='admin'>here</a> to return to the admin page.";
+        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
 
         ESP_LOGI("OTA", "OTA update completed. Rebooting...");
         esp_restart();
