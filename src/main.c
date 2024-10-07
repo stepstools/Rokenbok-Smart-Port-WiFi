@@ -12,6 +12,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
+#include "esp_http_client.h"
 #include "esp_netif.h"
 #include "lwip/sockets.h"
 #include "driver/gpio.h"
@@ -22,6 +23,9 @@
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+// OTA Firmware Update URL
+#define OTA_URL "https://raw.githubusercontent.com/stepstools/Rokenbok-Smart-Port-WiFi/refs/heads/main/firmware/ota_firmware.bin"
 
 // WiFi Defines
 #define AP_SSID "Smart-Port-Provisioning"
@@ -177,6 +181,39 @@ bool contains(uint8_t array[], size_t size, uint8_t value)
 //    \ \/  \/ / |  __| |  _ < \___ \|  __| |  _  / \ \/ / |  __| |  _  /   //
 //     \  /\  /  | |____| |_) |____) | |____| | \ \  \  /  | |____| | \ \   //
 //      \/  \/   |______|____/|_____/|______|_|  \_\  \/   |______|_|  \_\  //
+
+/// @brief HTTP Client Event Handler
+/// @param evt Event to handle.
+/// @return Error Code
+esp_err_t http_client_event_handler(esp_http_client_event_t *evt) {
+    switch(evt->event_id) {
+        case HTTP_EVENT_ERROR:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ERROR");
+            break;
+        case HTTP_EVENT_ON_CONNECTED:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_CONNECTED");
+            break;
+        case HTTP_EVENT_HEADER_SENT:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_HEADER_SENT");
+            break;
+        case HTTP_EVENT_ON_HEADER:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+            break;
+        case HTTP_EVENT_ON_DATA:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+            break;
+        case HTTP_EVENT_ON_FINISH:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_FINISH");
+            break;
+        case HTTP_EVENT_DISCONNECTED:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_DISCONNECTED");
+            break;
+        case HTTP_EVENT_REDIRECT:
+            ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_REDIRECT");
+            break;
+    }
+    return ESP_OK;
+}
 
 /// @brief Interprets received control codes and assigns controllers to control keys.
 /// @param control_code Specified Action Code (Press A, Unpress A, etc.)
@@ -905,7 +942,7 @@ static const httpd_uri_t admin_uri = {
 /// @return ESP Error Returns
 static esp_err_t admin_form_handler(httpd_req_t *req)
 {
-    char buf[512]; // TODO: Could buffer size be reduced?
+    char buf[512];
     int ret, remaining = req->content_len;
 
     while (remaining > 0)
@@ -1322,6 +1359,139 @@ static httpd_uri_t admin_form_uri = {
     .handler = admin_form_handler,
     .user_ctx = NULL};
 
+/// @brief HTML Handler for the Admin Page OTA Update Button
+/// @param req http Request
+/// @return ESP Error Returns
+static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
+{
+    char buf[128]; // TODO: Could buffer size be reduced?
+    int ret, remaining = req->content_len;
+
+    while (remaining > 0)
+    {
+        ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)));
+        if (ret <= 0)
+        {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT)
+            {
+                httpd_resp_send_500(req);
+            }
+            return ESP_FAIL;
+        }
+        remaining -= ret;
+    }
+
+    buf[req->content_len] = '\0';
+    //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
+
+    char rec_admin_password[32 + 1];
+
+    // Tokenize the Input String
+    char *token = strtok(buf, "&=");
+    while (token != NULL)
+    {
+        if (strcmp(token, "pw") == 0)
+        {
+            token = strtok(NULL, "&=");
+            if (token != NULL)
+            {
+                strncpy(rec_admin_password, token, sizeof(rec_admin_password) - 1);
+                rec_admin_password[sizeof(rec_admin_password) - 1] = '\0';
+            }
+        }
+        token = strtok(NULL, "&=");
+    }
+
+    if (strcmp(rec_admin_password, nvs_admin_password) == 0)
+    {
+        const char response[] = "Entered admin password was correct and the firmware update has begun.\n"
+                                "Click <a href='admin'>here</a> to return to the admin page.";
+        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+
+        esp_err_t err;
+        esp_ota_handle_t update_handle = 0 ;
+        const esp_partition_t *update_partition = NULL;
+
+        ESP_LOGI("OTA", "Starting OTA update");
+
+        esp_http_client_config_t config = {
+            .url = OTA_URL,
+            .event_handler = http_client_event_handler,
+            .timeout_ms = 10000,
+        };
+
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        err = esp_http_client_open(client, 0);
+        if (err != ESP_OK) {
+            ESP_LOGE("HTTP", "Failed to open HTTP connection: %s", esp_err_to_name(err));
+            esp_http_client_cleanup(client);
+            return err;
+        }
+
+        esp_http_client_fetch_headers(client);
+
+        update_partition = esp_ota_get_next_update_partition(NULL);
+
+        err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE("OTA", "esp_ota_begin failed, error=%s", esp_err_to_name(err));
+            esp_http_client_cleanup(client);
+            return err;
+        }
+
+        int binary_file_len = 0;
+        int data_read;
+        char ota_write_data[1024];
+        while ((data_read = esp_http_client_read(client, ota_write_data, sizeof(ota_write_data))) > 0) {
+            err = esp_ota_write(update_handle, (const void *)ota_write_data, data_read);
+            if (err != ESP_OK) {
+                ESP_LOGE("OTA", "Error: esp_ota_write failed! err=0x%x", err);
+                esp_http_client_cleanup(client);
+                esp_ota_end(update_handle);
+                return err;
+            }
+            binary_file_len += data_read;
+            ESP_LOGI("OTA", "Written image length %d", binary_file_len);
+        }
+
+        if (data_read < 0) {
+            ESP_LOGE("HTTP", "Error: SSL data read error");
+            esp_http_client_cleanup(client);
+            esp_ota_end(update_handle);
+            return err;
+        }
+
+        ESP_LOGI("OTA", "Total Write binary data length: %d", binary_file_len);
+
+        if (esp_ota_end(update_handle) != ESP_OK) {
+            ESP_LOGE("OTA", "Error: esp_ota_end failed! err=0x%x", err);
+            return err;
+        }
+
+        err = esp_ota_set_boot_partition(update_partition);
+        if (err != ESP_OK) {
+            ESP_LOGE("OTA", "esp_ota_set_boot_partition failed! err=0x%x", err);
+            return err;
+        }
+
+        ESP_LOGI("OTA", "OTA update completed. Rebooting...");
+        esp_restart();
+    }
+    else
+    {
+        const char response[] = "Entered admin password was not correct!\n"
+                                "Click <a href='admin'>here</a> to return to the admin page.";
+        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    }
+    return ESP_OK;
+}
+
+static httpd_uri_t ota_firmware_update_uri = {
+    .uri = "/otafirmwareupdate",
+    .method = HTTP_POST,
+    .handler = ota_firmware_update_handler,
+    .user_ctx = NULL};
+
 /// @brief HTML Handler for Initialization Index Page
 /// @param req http Request
 /// @return ESP Error Returns
@@ -1517,7 +1687,7 @@ static httpd_uri_t init_update_uri = {
 /// @return ESP Error Returns
 esp_err_t update_post_handler(httpd_req_t *req)
 {
-    char buf[1000];
+    char buffer[512];
     esp_ota_handle_t ota_handle;
     int remaining = req->content_len;
 
@@ -1526,7 +1696,7 @@ esp_err_t update_post_handler(httpd_req_t *req)
 
     while (remaining > 0)
     {
-        int recv_len = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)));
+        int recv_len = httpd_req_recv(req, buffer, MIN(remaining, sizeof(buffer)));
 
         // Timeout Error: Just retry
         if (recv_len == HTTPD_SOCK_ERR_TIMEOUT)
@@ -1542,7 +1712,7 @@ esp_err_t update_post_handler(httpd_req_t *req)
         }
 
         // Successful Upload: Flash firmware chunk
-        if (esp_ota_write(ota_handle, (const void *)buf, recv_len) != ESP_OK)
+        if (esp_ota_write(ota_handle, (const void *)buffer, recv_len) != ESP_OK)
         {
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Flash Error");
             return ESP_FAIL;
@@ -1581,6 +1751,8 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
     config.max_open_sockets = 13;
+    config.max_uri_handlers = 16;
+    config.stack_size = 8192;
 
     // Start the httpd server
     ESP_LOGI("WEBSERVER", "Starting server on port: '%d'", config.server_port);
@@ -1593,6 +1765,7 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &help_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &admin_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &admin_form_uri));
+            ESP_ERROR_CHECK(httpd_register_uri_handler(server, &ota_firmware_update_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &websocket_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &favicon_uri));
             ESP_ERROR_CHECK(httpd_register_uri_handler(server, &font_uri));
@@ -2123,51 +2296,6 @@ static void reset_erase_nvs(void)
         ESP_LOGE("NVS", "Error (%s) while attempting to erase NVS!", esp_err_to_name(ret));
     }
 
-    // // Erase Admin Password
-    // ret = nvs_erase_key(nvs_handle, "admin_password");
-    // if (ret == ESP_OK)
-    // {
-    //     ESP_LOGI("NVS", "Admin password erased from NVS.");
-    // }
-    // else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    // {
-    //     ESP_LOGW("NVS", "Admin password not found in NVS.");
-    // }
-    // else
-    // {
-    //     ESP_LOGE("NVS", "Error (%s) erasing admin password from NVS!", esp_err_to_name(ret));
-    // }
-
-    // // Erase SSID
-    // ret = nvs_erase_key(nvs_handle, "wifi_ssid");
-    // if (ret == ESP_OK)
-    // {
-    //     ESP_LOGI("NVS", "wifi_ssid erased from NVS.");
-    // }
-    // else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    // {
-    //     ESP_LOGW("NVS", "wifi_ssid not found in NVS.");
-    // }
-    // else
-    // {
-    //     ESP_LOGE("NVS", "Error (%s) erasing wifi_ssid from NVS!", esp_err_to_name(ret));
-    // }
-
-    // // Erase Password
-    // ret = nvs_erase_key(nvs_handle, "wifi_password");
-    // if (ret == ESP_OK)
-    // {
-    //     ESP_LOGI("NVS", "wifi_password erased from NVS.");
-    // }
-    // else if (ret == ESP_ERR_NVS_NOT_FOUND)
-    // {
-    //     ESP_LOGW("NVS", "wifi_password not found in NVS.");
-    // }
-    // else
-    // {
-    //     ESP_LOGE("NVS", "Error (%s) erasing wifi_password from NVS!", esp_err_to_name(ret));
-    // }
-
     // Close NVS
     nvs_close(nvs_handle);
 }
@@ -2301,6 +2429,21 @@ void init_wifi_sta(const char *ssid, const char *password, const uint8_t *gatewa
     IP4_ADDR(&ip_info.netmask, netmask[0], netmask[1], netmask[2], netmask[3]);
 
     esp_netif_set_ip_info(netif_int, &ip_info);
+
+    // Set Up DNS
+    esp_netif_dns_info_t main_dns_info;
+    ip_addr_t main_dns_ip;
+    IP_ADDR4(&main_dns_ip, 9, 9, 9, 9);
+    main_dns_info.ip.u_addr.ip4.addr = main_dns_ip.u_addr.ip4.addr;
+    main_dns_info.ip.type = IPADDR_TYPE_V4;
+    esp_netif_set_dns_info(netif_int, ESP_NETIF_DNS_MAIN, &main_dns_info);
+
+    esp_netif_dns_info_t backup_dns_info;
+    ip_addr_t backup_dns_ip;
+    IP_ADDR4(&backup_dns_ip, 8, 8, 8, 8);
+    backup_dns_info.ip.u_addr.ip4.addr = backup_dns_ip.u_addr.ip4.addr;
+    backup_dns_info.ip.type = IPADDR_TYPE_V4;
+    esp_netif_set_dns_info(netif_int, ESP_NETIF_DNS_BACKUP, &backup_dns_info);
 
     // Set the Hostname
     esp_netif_set_hostname(netif_int, "Smart Port WiFi Interface");

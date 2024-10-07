@@ -87,9 +87,13 @@
             text-align: center;
         }
 
-        form {
+        #form {
             font-size: 16px;
             text-align: center;
+        }
+
+        #update_firmware {
+            display: none;
         }
 
         input::-webkit-outer-spin-button,
@@ -154,8 +158,8 @@
 
     <br>
     <div id="form">
+        <h1>System Preferences</h1><br>
         <form action="/updatesettings" method="post">
-            <h1>Admin Preferences</h1><br>
             <strong>Admin Password:</strong> <input type="password" name="pw" maxlength="32" placeholder="1234" required><br><br>
 
             <input type="hidden" name="share" value="false">
@@ -180,16 +184,30 @@
             <strong>Vehicle 14:</strong> <input type="text" id="veh14" name="veh14" maxlength="20" placeholder="Green Transgripper" required><br>
             <strong>Vehicle 15:</strong> <input type="text" id="veh15" name="veh15" maxlength="20" placeholder="Elevator" required><br><br>
     
-            <input type="submit" value="Update Settings"><br>
-
-            <h3>Admin Page Help:</h3>
-            <strong>Admin Password:</strong> Must match password set during system initialization.<br>
-            <strong>Allow Vehicle Sharing:</strong> Allow virtual controllers to share vehicle selections.<br>
-            <strong>Enable Vehicles 9-15:</strong> Allow selection of vehicles 9-15 if you have made modified keys.<br>
-            <strong>Controller Timeout:</strong> How often the system revokes unused controller slots (1-255 seconds).<br>
-            <strong>Vehicles:</strong> Enter a name for each vehicle. Enter something like "X" or "None" for unused vehicles.<br><br>
-            <strong>Current Firmware Version:</strong> 3 September 24 Beta<br><br><br><br>
+            <input type="submit" value="Update Settings"><br><br>
         </form>
+
+        <strong>Admin Password:</strong> Must match password set during system initialization.<br>
+        <strong>Allow Vehicle Sharing:</strong> Allow virtual controllers to share vehicle selections.<br>
+        <strong>Enable Vehicles 9-15:</strong> Allow selection of vehicles 9-15 if you have made modified keys.<br>
+        <strong>Controller Timeout:</strong> How often the system revokes unused controller slots (1-255 seconds).<br>
+        <strong>Vehicles:</strong> Enter a name for each vehicle. Enter something like "X" or "None" for unused vehicles.<br><br>
+
+
+        <h1>Firmware Status</h1><br>
+        <strong>Current Firmware Version: </strong><span id="current_version"></span><br>
+        <strong>Latest Firmware Version: </strong><span id="latest_version"></span><br><br>
+
+        <form id="update_firmware" action="/otafirmwareupdate" method="post">
+            <strong>Admin Password:</strong> <input type="password" name="pw" maxlength="32" placeholder="1234" required><br><br>
+            <input type="submit" value="Update Firmware"><br><br>
+        </form>
+
+        <strong>Current Firmware Version:</strong> Firmware version currently installed.<br>
+        <strong>Latest Firmware Version:</strong> Latest firmware version available on GitHub.<br>
+        <strong>Update Firmware:</strong> Updates using latest firmware on GitHub (only displayed if available).<br>
+
+        <br><br><br>
     </div>
     
     <footer>
@@ -197,6 +215,10 @@
     </footer>
 
     <script>
+        const current_version = "0.0.0";
+        document.getElementById('current_version').textContent = current_version;
+        const version_json_url = 'https://raw.githubusercontent.com/stepstools/Rokenbok-Smart-Port-WiFi/refs/heads/main/firmware/version.json';
+
         let websocket; // Global Websocket Variable
         let socketConnected = false; // Tracks current status of WS connection.
 
@@ -270,9 +292,30 @@
             }
         }
 
+        // Download the latest version number from github.
+        async function checkForLatestFirmware() {
+            try {
+                const response = await fetch(version_json_url);
+                if (!response.ok) throw new Error('Invalid Response');
+                
+                const data = await response.json();
+                const latest_version = data.version;
+                
+                document.getElementById('latest_version').textContent = latest_version;
+                if (current_version !== latest_version) {
+                    document.getElementById('current_version').style.color = 'red';
+                    document.getElementById('update_firmware').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Unable to fetch current version number from GitHub.', error);
+                document.getElementById('latest_version').textContent = "Unable to Check";
+            }
+        }
+
         // Run when the page is fully loaded.
         window.addEventListener('DOMContentLoaded', () => {
             initWebSocket();
+            checkForLatestFirmware();
         });
         
         // Run before the page is unloaded.
