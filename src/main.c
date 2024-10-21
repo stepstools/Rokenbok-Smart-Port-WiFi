@@ -1470,9 +1470,10 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
             return err;
         }
 
-        const char response[] = "Entered admin password was correct and the firmware update has completed.\n"
+        const char response[] = "The firmware update has completed and the system will now reboot.\n"
                                 "Click <a href='admin'>here</a> to return to the admin page.";
         httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
 
         ESP_LOGI("OTA", "OTA update completed. Rebooting...");
         esp_restart();
