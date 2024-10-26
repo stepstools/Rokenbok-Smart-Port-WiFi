@@ -2431,6 +2431,8 @@ void init_wifi_sta(const char *ssid, const char *password, const uint8_t *gatewa
 
     esp_netif_set_ip_info(netif_int, &ip_info);
 
+    esp_netif_set_hostname(netif_int, "SmartPortWiFi");
+
     // Set Up DNS
     esp_netif_dns_info_t main_dns_info;
     ip_addr_t main_dns_ip;
@@ -2830,8 +2832,13 @@ static void IRAM_ATTR wifi_led_timer_callback(void *arg)
 /// @return void
 static void IRAM_ATTR reset_isr_handler()
 {
-    esp_timer_start_once(reset_button_timer, 5 * 1000000); // 5 Second Interval
-    return;
+    if (gpio_get_level(GPIO_RESET) == 0) { // Reset Pressed
+        esp_timer_start_once(reset_button_timer, 5 * 1000000); // 5 Second Interval
+        return;
+    } else { // Reset Released Before 5 Second Timer
+        esp_timer_stop(reset_button_timer);
+        esp_restart();
+    }
 }
 
 //   __  __          _____ _   _   //
@@ -2883,7 +2890,7 @@ void app_main(void)
 
     // Configure Reset Interrupt
     gpio_intr_enable(GPIO_RESET);
-    gpio_set_intr_type(GPIO_RESET, GPIO_INTR_NEGEDGE);
+    gpio_set_intr_type(GPIO_RESET, GPIO_INTR_ANYEDGE);
     gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
     gpio_isr_handler_add(GPIO_RESET, reset_isr_handler, NULL);
 
