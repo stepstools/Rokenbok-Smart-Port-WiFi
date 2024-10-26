@@ -1248,8 +1248,10 @@
                         if (keyboardActive == true) {
                             keyboardActive = false;
 
-                            selValues[8] = 15;
                             sendControlData(0x1A, 8); // Release Controller
+
+                            control_keys[8] = 0;
+                            selValues[8] = 15;
 
                             displayedControllers -= 1;
                             if (displayedControllers == 0) {
@@ -1425,6 +1427,22 @@
             websocket.onclose = function () { }; // Disable onclose Handler
             websocket.close();
             return null;
+        });
+
+        // Runs when the page loses focus.
+        window.addEventListener('blur', () => {
+            sendControlData(0x19, 8); // Unpress All Keys
+
+            updateButtonStyle(8, 'A', false);
+            updateButtonStyle(8, 'B', false);
+            updateButtonStyle(8, 'X', false);
+            updateButtonStyle(8, 'Y', false);
+            updateButtonStyle(8, 'LT', false);
+            updateButtonStyle(8, 'RT', false);
+            updateButtonStyle(8, 'U', false);
+            updateButtonStyle(8, 'D', false);
+            updateButtonStyle(8, 'L', false);
+            updateButtonStyle(8, 'R', false);
         });
 
         const systemStatusTextDiv = document.querySelector('.system-status-text');
