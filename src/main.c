@@ -32,7 +32,7 @@
 #define AP_PASSWORD "Smart-Port-Provisioning"
 #define MAX_WIFI_SSID_LEN 32
 #define MAX_WIFI_PASSWORD_LEN 64
-#define WIFI_CONNECT_ATTEMPTS 10
+#define WIFI_CONNECT_ATTEMPTS 20
 
 // Smart Port Master Bytes
 #define NULL_CMD 0x00
@@ -157,6 +157,24 @@ esp_timer_handle_t wifi_led_timer;
 //  |  __  |  __| | |    |  ___/|  __| |  _  /   //
 //  | |  | | |____| |____| |    | |____| | \ \   //
 //  |_|  |_|______|______|_|    |______|_|  \_\  //
+
+/// @brief Converts all percent encoded values within a string.
+/// @param string String to process.
+void convert_percent_encoded(char *string) {
+    char *src = string;
+    char *dst = string;
+    while (*src) {
+        if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2])) {
+            int value;
+            sscanf(src + 1, "%2x", &value); // Convert hex digits to a character
+            *dst++ = (char)value;
+            src += 3; // Move past "%XX"
+        } else {
+            *dst++ = *src++; // Copy regular characters
+        }
+    }
+    *dst = '\0'; // Null-terminate the result string
+}
 
 /// @brief Helper function to determine if an array contains a value.
 /// @param array The array to be checked.
@@ -962,11 +980,11 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
     buf[req->content_len] = '\0';
     //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
-    char rec_admin_password[32 + 1];
+    char rec_admin_password[96 + 1];
     char rec_share_mode[6];
     char rec_is16sel_mode[6];
     char rec_timeout[4];
-    char rec_names[15][20 + 1];
+    char rec_names[15][64 + 1];
 
     // Tokenize the Input String
     char *token = strtok(buf, "&=");
@@ -1250,6 +1268,11 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
         token = strtok(NULL, "&=");
     }
 
+    convert_percent_encoded(rec_admin_password);
+    for (uint8_t i = 0; i < 15; i++) {
+        convert_percent_encoded(rec_names[i]);
+    }
+
     if (strcmp(rec_admin_password, nvs_admin_password) == 0)
     {
         // Store the entered vehicle names to NVS.
@@ -1285,22 +1308,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
             nvs_set_u8(nvs_handle, "cont_timeout", controller_timeout);
 
-            for (uint8_t i = 0; i < 15; i++) { // Convert percent encoded values back to special characters.
-                char *src = rec_names[i];
-                char *dst = rec_names[i];
-                while (*src) {
-                    if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2])) {
-                        int value;
-                        sscanf(src + 1, "%2x", &value); // Convert hex digits to a character
-                        *dst++ = (char)value;
-                        src += 3; // Move past "%XX"
-                    } else {
-                        *dst++ = *src++; // Copy regular characters
-                    }
-                }
-                *dst = '\0'; // Null-terminate the result string
-            }
-
             nvs_set_str(nvs_handle, "v1_name", rec_names[0]);
             nvs_set_str(nvs_handle, "v2_name", rec_names[1]);
             nvs_set_str(nvs_handle, "v3_name", rec_names[2]);
@@ -1316,6 +1323,7 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             nvs_set_str(nvs_handle, "v13_name", rec_names[12]);
             nvs_set_str(nvs_handle, "v14_name", rec_names[13]);
             nvs_set_str(nvs_handle, "v15_name", rec_names[14]);
+
             nvs_commit(nvs_handle);
             nvs_close(nvs_handle);
 
@@ -1384,7 +1392,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
     buf[req->content_len] = '\0';
     //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
-    char rec_admin_password[32 + 1];
+    char rec_admin_password[96 + 1];
 
     // Tokenize the Input String
     char *token = strtok(buf, "&=");
@@ -1401,6 +1409,8 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         }
         token = strtok(NULL, "&=");
     }
+
+    convert_percent_encoded(rec_admin_password);
 
     if (strcmp(rec_admin_password, nvs_admin_password) == 0)
     {
@@ -1537,9 +1547,9 @@ static esp_err_t init_form_handler(httpd_req_t *req)
     buf[req->content_len] = '\0';
     ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
-    char rec_admin_password[32 + 1];
-    char rec_ssid[MAX_WIFI_SSID_LEN + 1];
-    char rec_password[MAX_WIFI_PASSWORD_LEN + 1];
+    char rec_admin_password[96 + 1];
+    char rec_ssid[MAX_WIFI_SSID_LEN*3 + 1]; // Times 3 allows for percent encoding.
+    char rec_password[MAX_WIFI_PASSWORD_LEN*3 + 1]; // Times 3 allows for percent encoding.
     uint8_t rec_gateway[4] = {0}; // Array to store each part of the Gateway IP
     uint8_t rec_static[4] = {0};  // Array to store each part of the Static IP
     uint8_t rec_netmask[4] = {0}; // Array to store each part of the Net Mask IP
@@ -1624,6 +1634,10 @@ static esp_err_t init_form_handler(httpd_req_t *req)
         }
         token = strtok(NULL, "&=");
     }
+
+    convert_percent_encoded(rec_admin_password);
+    convert_percent_encoded(rec_ssid);
+    convert_percent_encoded(rec_password);
 
     if (rec_ssid[0] != '\0' && rec_password[0] != '\0' && rec_admin_password[0] != '\0')
     {
