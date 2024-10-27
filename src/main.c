@@ -271,7 +271,7 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
 
     if (controller_index == 255) // No Empty Spots Available
     {
-        ESP_LOGI("SP", "NO AVAILABLE CONTROLLERS TO ASSIGN");
+        //ESP_LOGI("SP", "NO AVAILABLE CONTROLLERS TO ASSIGN");
         return 0xFF;
     }
 
@@ -1418,7 +1418,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         esp_ota_handle_t update_handle = 0 ;
         const esp_partition_t *update_partition = NULL;
 
-        ESP_LOGI("OTA", "Starting OTA update");
+        ESP_LOGI("OTA", "Starting OTA Update");
 
         esp_http_client_config_t config = {
             .url = OTA_URL,
@@ -1545,7 +1545,7 @@ static esp_err_t init_form_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
+    //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
     char rec_ssid[MAX_WIFI_SSID_LEN*3 + 1]; // Times 3 allows for percent encoding.
@@ -1770,7 +1770,7 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
     config.stack_size = 8192;
 
     // Start the httpd server
-    ESP_LOGI("WEBSERVER", "Starting server on port: '%d'", config.server_port);
+    //ESP_LOGI("WEBSERVER", "Starting server on port: '%d'", config.server_port);
     if (httpd_start(&server, &config) == ESP_OK)
     {
         if (page_version == 0)
@@ -2326,12 +2326,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     if (event_id == WIFI_EVENT_STA_START)
     {
         esp_timer_start_periodic(wifi_led_timer, 0.25 * 1000000); // 0.25 Second Interval
-        ESP_LOGI("WIFI", "WiFi station started. Connecting to the saved SSID.");
+        //ESP_LOGI("WIFI", "WiFi station started. Connecting to the saved SSID.");
         esp_wifi_connect();
     }
     else if (event_id == WIFI_EVENT_STA_CONNECTED)
     {
-        ESP_LOGI("WIFI", "WiFi station connected to saved credentials.");
+        //ESP_LOGI("WIFI", "WiFi station connected to saved credentials.");
     }
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
@@ -2615,12 +2615,12 @@ static void wifi_init_from_nvs(void)
                         {
                             // Connect to WiFi using retrieved information including IP arrays.
                             ESP_LOGI("NVS", "WiFi credentials found in NVS. Connecting to WiFi as a station.");
-                            ESP_LOGI("NVS", "Retrieved Admin Password: %s", nvs_admin_password);
-                            ESP_LOGI("NVS", "Retrieved SSID: %s", nvs_ssid);
-                            ESP_LOGI("NVS", "Retrieved Password: %s", nvs_password);
+                            //ESP_LOGI("NVS", "Retrieved Admin Password: %s", nvs_admin_password);
+                            //ESP_LOGI("NVS", "Retrieved SSID: %s", nvs_ssid);
+                            //ESP_LOGI("NVS", "Retrieved Password: %s", nvs_password);
                             if ((nvs_password[0] == 'X') && (nvs_password[1] == '\0'))
                             {
-                                ESP_LOGI("NVS", "Stored password was X, indicating no password");
+                                //ESP_LOGI("NVS", "Stored password was X, indicating no password");
                                 nvs_password[0] = '\0';
                             }
                             init_wifi_sta(nvs_ssid, nvs_password, nvs_gateway, nvs_static, nvs_netmask);
@@ -2656,7 +2656,7 @@ static void wifi_init_from_nvs(void)
 
         httpd_handle_t server = start_http_webserver(1); // Begin the http Webserver (1 = Initialization Version)
 
-        ESP_LOGI("WEBSERVER", "HTTP server started. Open a browser and connect to the ESP32 access point to enter WiFi credentials.");
+        //ESP_LOGI("WEBSERVER", "HTTP server started. Open a browser and connect to the ESP32 access point to enter WiFi credentials.");
 
         // Wait for the user to enter WiFi credentials and reboot the ESP32
         while (1)
