@@ -1610,7 +1610,7 @@ esp_err_t update_post_handler(httpd_req_t *req)
         {
             continue;
 
-            // Serious Error: Abort OTA
+        // Serious Error: Abort OTA
         }
         else if (recv_len <= 0)
         {
@@ -2166,7 +2166,7 @@ static void IRAM_ATTR spi_task(void *arg)
 //     \  /\  /   _| |_| |     _| |_   //
 //      \/  \/   |_____|_|    |_____|  //
 
-/// @brief Clears SSID and Password from NVS
+/// @brief Opens NVS and Erases It
 /// @param void
 /// @return void
 static void reset_erase_nvs(void)
@@ -2738,6 +2738,8 @@ static void IRAM_ATTR wifi_led_timer_callback(void *arg)
 /// @return void
 static void IRAM_ATTR reset_isr_handler()
 {
+    esp_timer_start_periodic(wifi_led_timer, 0.1 * 1000000); // 0.1 Second Interval
+
     if (gpio_get_level(GPIO_RESET) == 0) { // Reset Pressed
         esp_timer_start_once(reset_button_timer, 5 * 1000000); // 5 Second Interval
         return;
