@@ -158,13 +158,16 @@ esp_timer_handle_t wifi_led_timer;
 //  | |  | | |____| |____| |    | |____| | \ \   //
 //  |_|  |_|______|______|_|    |______|_|  \_\  //
 
-/// @brief Converts all percent encoded values within a string.
+/// @brief Converts all + to spaces and converts percent encoded values within a string.
 /// @param string String to process.
 void convert_percent_encoded(char *string) {
     char *src = string;
     char *dst = string;
     while (*src) {
-        if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2])) {
+        if (*src == '+') {
+            *dst++ = ' '; // Convert '+' to space
+            src++;
+        } else if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2])) {
             int value;
             sscanf(src + 1, "%2x", &value); // Convert hex digits to a character
             *dst++ = (char)value;
@@ -960,7 +963,7 @@ static const httpd_uri_t admin_uri = {
 /// @return ESP Error Returns
 static esp_err_t admin_form_handler(httpd_req_t *req)
 {
-    char buf[512];
+    char buf[1088];
     int ret, remaining = req->content_len;
 
     while (remaining > 0)
@@ -1031,12 +1034,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
                 strncpy(rec_names[0], token, sizeof(rec_names[0]) - 1);
                 rec_names[0][sizeof(rec_names[0]) - 1] = '\0';
             }
@@ -1046,13 +1043,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[1], token, sizeof(rec_names[1]) - 1);
                 rec_names[1][sizeof(rec_names[1]) - 1] = '\0';
             }
@@ -1062,13 +1052,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[2], token, sizeof(rec_names[2]) - 1);
                 rec_names[2][sizeof(rec_names[2]) - 1] = '\0';
             }
@@ -1078,13 +1061,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[3], token, sizeof(rec_names[3]) - 1);
                 rec_names[3][sizeof(rec_names[3]) - 1] = '\0';
             }
@@ -1094,13 +1070,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[4], token, sizeof(rec_names[4]) - 1);
                 rec_names[4][sizeof(rec_names[4]) - 1] = '\0';
             }
@@ -1110,13 +1079,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[5], token, sizeof(rec_names[5]) - 1);
                 rec_names[5][sizeof(rec_names[5]) - 1] = '\0';
             }
@@ -1126,13 +1088,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[6], token, sizeof(rec_names[6]) - 1);
                 rec_names[6][sizeof(rec_names[6]) - 1] = '\0';
             }
@@ -1142,13 +1097,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[7], token, sizeof(rec_names[7]) - 1);
                 rec_names[7][sizeof(rec_names[7]) - 1] = '\0';
             }
@@ -1158,13 +1106,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[8], token, sizeof(rec_names[8]) - 1);
                 rec_names[8][sizeof(rec_names[8]) - 1] = '\0';
             }
@@ -1174,13 +1115,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[9], token, sizeof(rec_names[9]) - 1);
                 rec_names[9][sizeof(rec_names[9]) - 1] = '\0';
             }
@@ -1190,13 +1124,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[10], token, sizeof(rec_names[10]) - 1);
                 rec_names[10][sizeof(rec_names[10]) - 1] = '\0';
             }
@@ -1206,13 +1133,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[11], token, sizeof(rec_names[11]) - 1);
                 rec_names[11][sizeof(rec_names[11]) - 1] = '\0';
             }
@@ -1222,13 +1142,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[12], token, sizeof(rec_names[12]) - 1);
                 rec_names[12][sizeof(rec_names[12]) - 1] = '\0';
             }
@@ -1238,13 +1151,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[13], token, sizeof(rec_names[13]) - 1);
                 rec_names[13][sizeof(rec_names[13]) - 1] = '\0';
             }
@@ -1254,13 +1160,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_names[14], token, sizeof(rec_names[14]) - 1);
                 rec_names[14][sizeof(rec_names[14]) - 1] = '\0';
             }
@@ -1576,13 +1475,6 @@ static esp_err_t init_form_handler(httpd_req_t *req)
             token = strtok(NULL, "&=");
             if (token != NULL)
             {
-                // Replace '+' with spaces
-                char *pos;
-                while ((pos = strchr(token, '+')) != NULL)
-                {
-                    *pos = ' ';
-                }
-
                 strncpy(rec_ssid, token, sizeof(rec_ssid) - 1);
                 rec_ssid[sizeof(rec_ssid) - 1] = '\0';
             }
