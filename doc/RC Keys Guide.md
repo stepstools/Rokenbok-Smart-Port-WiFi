@@ -1,3 +1,4 @@
+
 # Rokenbok RC Select Keys
 
 ## Overview
@@ -56,8 +57,8 @@ Okay, so what do nibbles have to do with Rokenbok? I’m glad you asked. When yo
 
 Rokenbok decided to be boring and only use 8 of the 16 possible keys. They actually described potentially making controllers capable of selecting 16 vehicles in their patent requests, but they never got around to doing it. However, the smart port is more than capable of controlling these extra vehicles! Unfortunately, number 16 is unavailable due to its use as the “no select” code, but we can still get numbers 9-15! If you’ve been following along, you’ll know that control keys 1-8 all have ridge three present. Now, if we remove that ridge, suddenly bit number 3 changes from a zero to a one. A one in binary position three is equal to 8, so you’ve just added 8 to the value of the key! Number 1 becomes 9, 2 becomes 10, etc. This checks out with the table above if you flip the leftmost bit of any number. Don’t forget that there’s no need to hack up your number 8 key since 16 isn’t a valid selection.
 
-Caveat: I haven’t actually done this. However, I had a friend help me and depress the switch for bit zero on a vehicle using a small screwdriver while I used a piece of wire to simulate the central ridges turning on the vehicle. I was successfully able to control the vehicle as key number 15 (binary 1110, only ridge zero present). It might be possible that only certain vehicles work with this hack. My worst case scenario guess is that only older vehicles work with this. It’s possible that newer vehicles lost this functionality once Rokenbok ditched the smart port and decided not to make 16 selection controllers. Of course, my best case scenario guess is that they all work! Only one way to find out…
+~~Caveat: I haven’t actually done this. However, I had a friend help me and depress the switch for bit zero on a vehicle using a small screwdriver while I used a piece of wire to simulate the central ridges turning on the vehicle. I was successfully able to control the vehicle as key number 15 (binary 1110, only ridge zero present). It might be possible that only certain vehicles work with this hack. My worst case scenario guess is that only older vehicles work with this. It’s possible that newer vehicles lost this functionality once Rokenbok ditched the smart port and decided not to make 16 selection controllers. Of course, my best case scenario guess is that they all work! Only one way to find out…~~
+
+Update: Multiple people have successfully created keys 9-15 by physically removing the third ridge from keys 1-7.  Key 8 cannot be turned into key 16.
 
 Guide By: Stepstools, the Smart Port Dude
-
-[stepstools@gmail.com](mailto:stepstools@gmail.com)
