@@ -13,7 +13,7 @@
  3. Using a WiFi enabled device, connect to the "Smart-Port-Provisioning" network.  The password is also "Smart-Port-Provisioning".
  4. Using a web browser, navigate to "1.2.3.4" to access the adapter's provisioning web server.  Follow the instructions on the page to input the SSID, password, and static IP information for your local network.
 	 - WARNING: DO NOT set your admin password to a password you use for anything else.  This password is sent over the internet unencrypted if you use it later!  Safe enough for this little toy, but don't compromise your important passwords!
-	 - Note: The IP address information is required to set up a known "static IP" address for your adapter.  This way your router's DHCP server won't change the adapter's SPA and leave you unable to connect.
+	 - Note: The IP address information is required to set up a known "static IP" address for your adapter.  This way your router's DHCP server won't change the adapter's IP and leave you unable to connect.
  5. After double checking all of your info, click the "Submit" button.  You will see the device restart.  If the WiFi LED goes solid blue, this means that it has successfully connected to your network.
 	 - If the WiFi LED rapidbly blinks this means that it cannot connect to your network.  It will eventually clear your inputted credentials, reboot, and then re-enter provisioning mode.  You can also hold the reset button to re-enter provisioning mode at any time.  Double check your WiFi credentials and try again.
  6. Now connect the adapter to your Gen 1 Rokenbok RC command deck Smart Port using the male to male mini-DIN-6 cable.  It is best to do this while the command deck is off.
