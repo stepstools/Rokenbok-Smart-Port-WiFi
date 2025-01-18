@@ -790,9 +790,14 @@
         let control_keys = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Control Keys Assigned to Each Controller (Gamepad 1-8, Keyboard)
         let selValues = [15, 15, 15, 15, 15, 15, 15, 15, 15]; // Vehicles Selections for Each Controller (Gamepad 1-8, Keyboard)
 
+        let currSelValues = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Current Vehicles Being Interacted With (For Last Vehicle Jump)
+        let prevSelValues = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Previous Vehicles Being Interacted With (For Last Vehicle Jump)
+
         // Used to track previous statess of gamepad buttons because they use polling and not interrupts.
-        let selectButtonPressed = [false, false, false, false, false, false, false, false,];
-        let backButtonPressed = [false, false, false, false, false, false, false, false];
+        let prevBack = [false, false, false, false, false, false, false, false,];
+        let prevStart = [false, false, false, false, false, false, false, false];
+        let prevLT = [false, false, false, false, false, false, false, false];
+        let pevRT = [false, false, false, false, false, false, false, false];
         let prevA = [false, false, false, false, false, false, false, false];
         let prevB = [false, false, false, false, false, false, false, false];
         let prevX = [false, false, false, false, false, false, false, false];
@@ -801,7 +806,6 @@
         let prevD = [false, false, false, false, false, false, false, false];
         let prevL = [false, false, false, false, false, false, false, false];
         let prevR = [false, false, false, false, false, false, false, false];
-        let prevS = [false, false, false, false, false, false, false, false];
 
         // Function to check if any text boxes are focused.
         function areTextBoxesFocused() {
@@ -1036,6 +1040,14 @@
             }
         }
 
+        // Update previously selected arrays.
+        function updatePrevSelValues(gamepadIndex) {
+            if ((selValues[gamepadIndex] != 15) && (selValues[gamepadIndex] != currSelValues[gamepadIndex])) {
+                prevSelValues[gamepadIndex] = currSelValues[gamepadIndex];
+                currSelValues[gamepadIndex] = selValues[gamepadIndex];
+            }
+        }
+
         // Polls the gamepads and applies appropriate logic.
         function processGamePadFrame() {
             const gamepads = navigator.getGamepads();
@@ -1055,54 +1067,70 @@
                     updateButtonStyle(i, 'B', gamepad.buttons[1].pressed);
                     updateButtonStyle(i, 'X', gamepad.buttons[2].pressed);
                     updateButtonStyle(i, 'Y', gamepad.buttons[3].pressed);
-                    updateButtonStyle(i, 'LT', gamepad.buttons[4].pressed || axisSlow);
-                    updateButtonStyle(i, 'RT', gamepad.buttons[5].pressed);
+                    updateButtonStyle(i, 'LT', gamepad.buttons[4].pressed);
+                    updateButtonStyle(i, 'RT', gamepad.buttons[5].pressed || axisSlow);
                     updateButtonStyle(i, 'U', gamepad.buttons[12].pressed || axisUp);
                     updateButtonStyle(i, 'D', gamepad.buttons[13].pressed || axisDown);
                     updateButtonStyle(i, 'L', gamepad.buttons[14].pressed || axisLeft);
                     updateButtonStyle(i, 'R', gamepad.buttons[15].pressed || axisRight);
 
                     // Decrease SEL value when Back (button 8) is pressed (once per press).
-                    if (gamepad.buttons[8].pressed && !backButtonPressed[i]) {
-                        if (is16sel_mode) {
-                            selValues[i] = (selValues[i] - 1 + 16) % 16; // Wrap around 0-15.
-                        } else {
-                            if (selValues[i] == 0) { // Wrap around 0-7 and 15.
+                    if (gamepad.buttons[8].pressed != prevBack[i]) {
+                        if (gamepad.buttons[8].pressed) {
+                            if (gamepad.buttons[5].pressed) {
                                 selValues[i] = 15;
-                            } else if (selValues[i] > 7) {
-                                selValues[i] = 7;
                             } else {
-                                selValues[i] = selValues[i] - 1;
+                                if (is16sel_mode) {
+                                    selValues[i] = (selValues[i] - 1 + 15) % 15; // Wrap around 0-14.
+                                } else {
+                                    selValues[i] = (selValues[i] - 1 + 8) % 8; // Wrap around 0-7.
+                                }
                             }
+                            sendControlData(0x20, i);
                         }
-                        sendControlData(0x20, i);
-                        backButtonPressed[i] = true;
-                    } else if (!gamepad.buttons[8].pressed) {
-                        backButtonPressed[i] = false; // Reset the flag when Back button is released
+                        prevBack[i] = gamepad.buttons[8].pressed;
                     }
 
-                    // Increase SEL value when Select (button 9) is pressed (once per press).
-                    if (gamepad.buttons[9].pressed && !selectButtonPressed[i]) {
-                        if (is16sel_mode) {
-                            selValues[i] = (selValues[i] + 1) % 16; // Wrap around 0-15.
-                        } else {
-                            if (selValues[i] == 15) { // Wrap around 0-7 and 15.
-                                selValues[i] = 0;
-                            } else if (selValues[i] >= 7) {
+                    // Increase SEL value when Start (button 9) is pressed (once per press).
+                    if (gamepad.buttons[9].pressed != prevStart[i]) {
+                        if (gamepad.buttons[9].pressed) {
+                            if (gamepad.buttons[5].pressed) {
                                 selValues[i] = 15;
                             } else {
-                                selValues[i] = selValues[i] + 1;
+                                if (is16sel_mode) {
+                                    if (selValues[i] == 15) {
+                                        selValues[i] = 0;
+                                    } else {
+                                        selValues[i] = (selValues[i] + 1) % 15; // Wrap around 0-14.
+                                    }
+                                } else {
+                                    if (selValues[i] == 15) {
+                                        selValues[i] = 0;
+                                    } else {
+                                        selValues[i] = (selValues[i] + 1) % 8; // Wrap around 0-7.
+                                    }
+                                }
                             }
+                            sendControlData(0x20, i);
                         }
-                        sendControlData(0x20, i);
-                        selectButtonPressed[i] = true;
-                    } else if (!gamepad.buttons[9].pressed) {
-                        selectButtonPressed[i] = false; // Reset the flag when Select button is released
+                        prevStart[i] = gamepad.buttons[9].pressed;
+                    }
+
+                    // Jump to last selection when LT (button 4) is pressed (once per press).
+                    if (gamepad.buttons[4].pressed != prevLT[i]) {
+                        if (gamepad.buttons[4].pressed) {
+                            selValues[i] = prevSelValues[i];
+                            prevSelValues[i] = currSelValues[i];
+                            currSelValues[i] = selValues[i];
+                            sendControlData(0x20, i);
+                        }
+                        prevLT[i] = gamepad.buttons[4].pressed;
                     }
 
                     if (gamepad.buttons[0].pressed != prevA[i]) {
                         if (gamepad.buttons[0].pressed == true) {
                             sendControlData(0x00, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x10, i);
                         }
@@ -1112,6 +1140,7 @@
                     if (gamepad.buttons[1].pressed != prevB[i]) {
                         if (gamepad.buttons[1].pressed == true) {
                             sendControlData(0x01, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x11, i);
                         }
@@ -1121,6 +1150,7 @@
                     if (gamepad.buttons[2].pressed != prevX[i]) {
                         if (gamepad.buttons[2].pressed == true) {
                             sendControlData(0x02, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x12, i);
                         }
@@ -1130,6 +1160,7 @@
                     if (gamepad.buttons[3].pressed != prevY[i]) {
                         if (gamepad.buttons[3].pressed == true) {
                             sendControlData(0x03, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x13, i);
                         }
@@ -1139,6 +1170,7 @@
                     if ((gamepad.buttons[12].pressed || axisUp) != prevU[i]) {
                         if ((gamepad.buttons[12].pressed || axisUp) == true) {
                             sendControlData(0x04, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x14, i);
                         }
@@ -1148,6 +1180,7 @@
                     if ((gamepad.buttons[13].pressed || axisDown) != prevD[i]) {
                         if ((gamepad.buttons[13].pressed || axisDown) == true) {
                             sendControlData(0x05, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x15, i);
                         }
@@ -1157,6 +1190,7 @@
                     if ((gamepad.buttons[14].pressed || axisLeft) != prevL[i]) {
                         if ((gamepad.buttons[14].pressed || axisLeft) == true) {
                             sendControlData(0x06, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x16, i);
                         }
@@ -1166,19 +1200,21 @@
                     if ((gamepad.buttons[15].pressed || axisRight) != prevR[i]) {
                         if ((gamepad.buttons[15].pressed || axisRight) == true) {
                             sendControlData(0x07, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x17, i);
                         }
                         prevR[i] = (gamepad.buttons[15].pressed || axisRight);
                     }
 
-                    if ((gamepad.buttons[4].pressed || gamepad.buttons[5].pressed || axisSlow) != prevS[i]) {
-                        if ((gamepad.buttons[4].pressed || gamepad.buttons[5].pressed || axisSlow) == true) {
+                    if ((gamepad.buttons[5].pressed || axisSlow) != pevRT[i]) {
+                        if ((gamepad.buttons[5].pressed || axisSlow) == true) {
                             sendControlData(0x08, i);
+                            updatePrevSelValues(i);
                         } else {
                             sendControlData(0x18, i);
                         }
-                        prevS[i] = (gamepad.buttons[4].pressed || gamepad.buttons[5].pressed || axisSlow) === true ? 1 : 0;
+                        pevRT[i] = (gamepad.buttons[5].pressed || axisSlow) === true ? 1 : 0;
                     }
                 }
             }
@@ -1229,118 +1265,128 @@
             if (!areTextBoxesFocused()) {
                 if (event.repeat) return; // Don't process held keys.
                 const key = event.key.toLowerCase();
-                switch (key) {
-                    case "9":
-                        if (keyboardActive == false) {
-                            keyboardActive = true;
+                if ((key == "`") || (key == "~")) {
+                    if (keyboardActive == false) {
+                        keyboardActive = true;
 
-                            displayedControllers += 1;
-                            document.querySelector('.NO_CTRL').style.display = 'none';
-                            document.querySelector(`.CTRL9`).style.display = 'block';
+                        displayedControllers += 1;
+                        document.querySelector('.NO_CTRL').style.display = 'none';
+                        document.querySelector(`.CTRL9`).style.display = 'block';
 
-                            if (control_keys[8] == 0) {
-                                sendArray([0xC1, 8]);
-                            }
+                        if (control_keys[8] == 0) {
+                            sendArray([0xC1, 8]);
                         }
-                        return; // Don't run the next switch section.
+                    } else if (keyboardActive == true) {
+                        keyboardActive = false;
 
-                    case "0":
-                        if (keyboardActive == true) {
-                            keyboardActive = false;
+                        sendControlData(0x1A, 8); // Release Controller
 
-                            sendControlData(0x1A, 8); // Release Controller
+                        control_keys[8] = 0;
+                        selValues[8] = 15;
 
-                            control_keys[8] = 0;
-                            selValues[8] = 15;
-
-                            displayedControllers -= 1;
-                            if (displayedControllers == 0) {
-                                document.querySelector('.NO_CTRL').style.display = 'block';
-                            }
-                            document.querySelector(`.CTRL9`).style.display = 'none';
-                            document.querySelector(`.CTRL9 .SEL`).textContent = 'N/S';
-                            document.querySelector(`.CTRL9 .CTR`).textContent = 'N/C';
-                            document.querySelector(`.CTRL9 .NAME`).textContent = '';
-
-                            updateButtonStyle(8, 'A', false);
-                            updateButtonStyle(8, 'B', false);
-                            updateButtonStyle(8, 'X', false);
-                            updateButtonStyle(8, 'Y', false);
-                            updateButtonStyle(8, 'LT', false);
-                            updateButtonStyle(8, 'RT', false);
-                            updateButtonStyle(8, 'U', false);
-                            updateButtonStyle(8, 'D', false);
-                            updateButtonStyle(8, 'L', false);
-                            updateButtonStyle(8, 'R', false);
+                        displayedControllers -= 1;
+                        if (displayedControllers == 0) {
+                            document.querySelector('.NO_CTRL').style.display = 'block';
                         }
-                        return; // Don't run the next switch section.
+                        document.querySelector(`.CTRL9`).style.display = 'none';
+                        document.querySelector(`.CTRL9 .SEL`).textContent = 'N/S';
+                        document.querySelector(`.CTRL9 .CTR`).textContent = 'N/C';
+                        document.querySelector(`.CTRL9 .NAME`).textContent = '';
+
+                        updateButtonStyle(8, 'A', false);
+                        updateButtonStyle(8, 'B', false);
+                        updateButtonStyle(8, 'X', false);
+                        updateButtonStyle(8, 'Y', false);
+                        updateButtonStyle(8, 'LT', false);
+                        updateButtonStyle(8, 'RT', false);
+                        updateButtonStyle(8, 'U', false);
+                        updateButtonStyle(8, 'D', false);
+                        updateButtonStyle(8, 'L', false);
+                        updateButtonStyle(8, 'R', false);
+                    }
+                    return; // Don't run the next switch section.
                 }
                 if (keyboardActive == true) {
                     switch (key) {
                         case "1":
                             if (is16sel_mode) {
-                                selValues[8] = (selValues[8] - 1 + 16) % 16; // Wrap around 0-15.
+                                selValues[8] = (selValues[8] - 1 + 15) % 15; // Wrap around 0-14.
                             } else {
-                                if (selValues[8] == 0) { // Wrap around 0-7 and 15.
-                                    selValues[8] = 15;
-                                } else if (selValues[8] > 7) {
-                                    selValues[8] = 7;
-                                } else {
-                                    selValues[8] = selValues[8] - 1;
-                                }
+                                selValues[8] = (selValues[8] - 1 + 8) % 8; // Wrap around 0-7.
                             }
                             sendControlData(0x20, 8);
                             break;
                         case "2":
                             if (is16sel_mode) {
-                                selValues[8] = (selValues[8] + 1) % 16; // Wrap around 0-15.
-                            } else {
-                                if (selValues[8] == 15) { // Wrap around 0-7 and 15.
+                                if (selValues[8] == 15) {
                                     selValues[8] = 0;
-                                } else if (selValues[8] >= 7) {
-                                    selValues[8] = 15;
                                 } else {
-                                    selValues[8] = selValues[8] + 1;
+                                    selValues[8] = (selValues[8] + 1) % 15; // Wrap around 0-14.
+                                }
+                            } else {
+                                if (selValues[8] == 15) {
+                                    selValues[8] = 0;
+                                } else {
+                                    selValues[8] = (selValues[8] + 1) % 8; // Wrap around 0-7.
                                 }
                             }
+                            sendControlData(0x20, 8);
+                            break;
+                        case "3":
+                            updateButtonStyle(8, 'LT', true);
+                            selValues[8] = prevSelValues[8];
+                            prevSelValues[8] = currSelValues[8];
+                            currSelValues[8] = selValues[8];
+                            sendControlData(0x20, 8);
+                            break;
+                        case "4":
+                            selValues[8] = 15;
                             sendControlData(0x20, 8);
                             break;
                         case "f":
                             updateButtonStyle(8, 'A', true);
                             sendControlData(0x00, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "r":
                             updateButtonStyle(8, 'B', true);
                             sendControlData(0x01, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "q":
                             updateButtonStyle(8, 'X', true);
                             sendControlData(0x02, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "e":
                             updateButtonStyle(8, 'Y', true);
                             sendControlData(0x03, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "w":
                             updateButtonStyle(8, 'U', true);
                             sendControlData(0x04, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "s":
                             updateButtonStyle(8, 'D', true);
                             sendControlData(0x05, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "a":
                             updateButtonStyle(8, 'L', true);
                             sendControlData(0x06, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "d":
                             updateButtonStyle(8, 'R', true);
                             sendControlData(0x07, 8);
+                            updatePrevSelValues(8);
                             break;
                         case "shift":
                             updateButtonStyle(8, 'RT', true);
-                            updateButtonStyle(8, 'LT', true);
                             sendControlData(0x08, 8);
+                            updatePrevSelValues(8);
                             break;
                     }
                 }
@@ -1352,6 +1398,9 @@
             if (!areTextBoxesFocused()) {
                 const key = event.key.toLowerCase();
                 switch (key) {
+                    case "3":
+                        updateButtonStyle(8, 'LT', false);
+                        break;
                     case "f":
                         updateButtonStyle(8, 'A', false);
                         sendControlData(0x10, 8);
@@ -1386,7 +1435,7 @@
                         break;
                     case "shift":
                         updateButtonStyle(8, 'RT', false);
-                        updateButtonStyle(8, 'LT', false);
+                        //updateButtonStyle(8, 'LT', false);
                         sendControlData(0x18, 8);
                         break;
                 }
