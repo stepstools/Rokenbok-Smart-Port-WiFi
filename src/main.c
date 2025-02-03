@@ -289,39 +289,23 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             selects[controller_index] = requested_vehicle;
         }
         else
-        {
-            if ((requested_vehicle > selects[controller_index]) || ((requested_vehicle == 0) && (selects[controller_index] == 15)))
+        { 
+            uint8_t new_vehicle = requested_vehicle;
+            uint8_t max_value = (is16sel_mode ? 14 : 7);
+            
+            if (new_vehicle == (selects[controller_index] + 1) % (max_value + 1))
             { // Detecting if the value was incremented.
-                uint8_t new_vehicle = requested_vehicle;
-                while (contains(selects, 8, new_vehicle))
-                {
-                    if (new_vehicle >= 14)
-                    {
-                        new_vehicle = 0;
-                    }
-                    else
-                    {
-                        new_vehicle++;
-                    }
+                while (contains(selects, 8, new_vehicle)) {
+                    new_vehicle = (new_vehicle + 1) % (max_value + 1);
                 }
-                selects[controller_index] = new_vehicle;
             }
-            else if (requested_vehicle < selects[controller_index])
+            else //if (new_vehicle == (selects[controller_index] - 1 + max_value + 1) % (max_value + 1))
             { // Detecting if the value was decremented.
-                uint8_t new_vehicle = requested_vehicle;
-                while (contains(selects, 8, new_vehicle))
-                {
-                    if (new_vehicle == 0)
-                    {
-                        new_vehicle = 14;
-                    }
-                    else
-                    {
-                        new_vehicle--;
-                    }
+                while (contains(selects, 8, new_vehicle)) {
+                    new_vehicle = (new_vehicle == 0) ? max_value : (new_vehicle - 1);
                 }
-                selects[controller_index] = new_vehicle;
             }
+            selects[controller_index] = new_vehicle;
         }
     }
 
