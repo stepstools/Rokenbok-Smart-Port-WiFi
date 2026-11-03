@@ -66,7 +66,7 @@
 #define NO_SEL_TIMEOUT 0x00            // 1 = Controller Never Times Out, 0 = Normal V4|V3|V2|V1|P4|P3|P2|P1
 
 // Smart Port State Machine Values
-enum SeriesState : uint8_t
+enum SeriesState
 {
     STATE_IDLE = 0,
 
@@ -188,7 +188,7 @@ esp_timer_handle_t reset_button_timer;
 esp_timer_handle_t wifi_led_timer;
 
 // Array for Received USB Bytes
-uint8_t usb_rx_bytes[128];
+uint8_t usb_rx_bytes[256];
 uint8_t usb_rx_index = 0;
 
 //   _    _ ______ _      _____  ______ _____    //
@@ -479,7 +479,7 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             timeouts[controller_index] = false;
             control_keys[controller_index] = 0;
 
-            esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
+            esp_timer_start_once(post_timeout_timer, 100000); // 0.1 Second Interval
             break;
 
         default:
@@ -594,7 +594,7 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             timeouts[controller_index] = false;
             control_keys[controller_index] = 0;
 
-            esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
+            esp_timer_start_once(post_timeout_timer, 100000); // 0.1 Second Interval
             break;
         }
     }
@@ -754,10 +754,14 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             if (ws_pkt.payload[1] > 1)
             {
                 char received_string[17];
-                strncpy(received_string, (char *)ws_pkt.payload + 2, ws_pkt.len - 2);
-                received_string[ws_pkt.len - 2] = '\0';
+                // strncpy(received_string, (char *)ws_pkt.payload + 2, ws_pkt.len - 2);
+                // received_string[ws_pkt.len - 2] = '\0';
+                // snprintf(control_key_user_names[ws_pkt.payload[1]], 17, received_string);
 
-                snprintf(control_key_user_names[ws_pkt.payload[1]], 17, received_string);
+                size_t copy_len = MIN(ws_pkt.len - 2, sizeof(received_string) - 1);
+                memcpy(received_string, (char *)ws_pkt.payload + 2, copy_len);
+                received_string[copy_len] = '\0';
+                snprintf(control_key_user_names[ws_pkt.payload[1]], 17, "%s", received_string);
             }
         }
         else if (ws_pkt.payload[0] == 0xC4) // Request For User Names
@@ -1250,7 +1254,7 @@ static httpd_uri_t admin_form_uri = {
 /// @return ESP Error Returns
 static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
 {
-    char buf[128]; // TODO: Could buffer size be reduced?
+    char buf[128];
     int ret, remaining = req->content_len;
 
     while (remaining > 0)
@@ -1410,7 +1414,7 @@ static httpd_uri_t init_index_uri = {
 /// @return ESP Error Returns
 static esp_err_t init_form_handler(httpd_req_t *req)
 {
-    char buf[512]; // TODO: Could buffer size be reduced?
+    char buf[512];
     int ret, remaining = req->content_len;
 
     while (remaining > 0)
@@ -1938,7 +1942,7 @@ static void IRAM_ATTR spi_task(void *arg)
                 // RESET SYNC TIMER (EDIT_TPADS Only Received When Synced)
                 sp_status = 1;
                 gpio_set_level(GPIO_SP_LED, 1);
-                esp_timer_restart(sync_timer, 0.1 * 1000000); // 0.1 Second Interval
+                esp_timer_restart(sync_timer, 100000); // 0.1 Second Interval
                 break;
             }
             case EDIT_SELECT: // Receive: EDIT_SELECT // Send: VERIFY_EDIT
@@ -2064,7 +2068,7 @@ static void IRAM_ATTR spi_task(void *arg)
                         selects[i] = 0x0F;
                         clear_sp_bits(bitwise_index);
                         controller_enable[i] = false;
-                        controller_enable_bitmask |= (0b00000001 << bitwise_index); // THIS MAY BE BORKED????
+                        controller_enable_bitmask |= (0b00000001 << bitwise_index);
                     }
                     timeouts[i] = true;
                 }
@@ -2245,7 +2249,7 @@ static void IRAM_ATTR spi_task(void *arg)
 
         case STATE_EDIT_SELECT_10: // Receive: EDIT_END // Send: SLAVE_WANT_INS
             spi_fsm_state = STATE_IDLE;
-            send_byte = SLAVE_WANT_INS; // Ready to Insert Packet // TODO: I think you could send a NULL_CMD here.
+            send_byte = SLAVE_WANT_INS; // Ready to Insert Packet
             break;
 
         // STATE MACHINE PKT INJECT STATE
@@ -2360,7 +2364,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     // STATION EVENTS
     if (event_id == WIFI_EVENT_STA_START)
     {
-        esp_timer_start_periodic(wifi_led_timer, 0.25 * 1000000); // 0.25 Second Interval
+        esp_timer_start_periodic(wifi_led_timer, 250000); // 0.25 Second Interval
         esp_wifi_connect();
     }
     else if (event_id == WIFI_EVENT_STA_CONNECTED)
@@ -2369,7 +2373,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        esp_timer_start_periodic(wifi_led_timer, 0.25 * 1000000); // 0.25 Second Interval
+        esp_timer_start_periodic(wifi_led_timer, 250000); // 0.25 Second Interval
         // ESP_LOGE("WIFI", "WiFi station disconnected. Reconnecting...");
         esp_wifi_connect();
         connection_attempts++;
@@ -2391,7 +2395,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     else if (event_id == WIFI_EVENT_AP_START)
     {
         // ESP_LOGI("WIFI", "WiFi Access Point Started");
-        esp_timer_start_periodic(wifi_led_timer, 1 * 1000000); // 1 Second Interval
+        esp_timer_start_periodic(wifi_led_timer, 1000000); // 1 Second Interval
     }
     else if (event_id == WIFI_EVENT_AP_STACONNECTED)
     {
@@ -2768,7 +2772,7 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
         timeouts[i] = false;
     }
 
-    esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
+    esp_timer_start_once(post_timeout_timer, 100000); // 0.1 Second Interval
 }
 
 /// @brief Runs 0.1 seconds after the timeout_timer_callback. Gives time for selections to propagate before disabling.
@@ -2834,8 +2838,8 @@ static void IRAM_ATTR reset_isr_handler(void *arg)
     if (gpio_get_level(GPIO_RESET) == 0)
     { // Reset Pressed
         esp_timer_stop(wifi_led_timer);
-        esp_timer_start_periodic(wifi_led_timer, 0.1 * 1000000); // 0.1 Second Interval
-        esp_timer_start_once(reset_button_timer, 5 * 1000000);   // 5 Second Interval
+        esp_timer_start_periodic(wifi_led_timer, 100000); // 0.1 Second Interval
+        esp_timer_start_once(reset_button_timer, 5000000);   // 5 Second Interval
     }
     else
     { // Reset Released Before 5 Second Timer
@@ -2923,7 +2927,7 @@ void app_main(void)
         .callback = &sync_timer_callback,
         .name = "sync_timer"};
     esp_timer_create(&sync_timer_args, &sync_timer);
-    esp_timer_start_periodic(sync_timer, 0.1 * 1000000); // 0.1 Second Interval
+    esp_timer_start_periodic(sync_timer, 100000); // 0.1 Second Interval
 
     // Initialize Post Timeout Timer
     const esp_timer_create_args_t post_timeout_timer_args = {
