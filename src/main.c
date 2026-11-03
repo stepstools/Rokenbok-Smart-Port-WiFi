@@ -2258,11 +2258,11 @@ static void IRAM_ATTR spi_task(void *arg)
             // Generate First Half of DPI Packet (A, B, X, Y, A', B', RT, ?)
             send_byte = 0b00000000;
 
-            if (dpi_a[next_dpi_index])
+            if (dpi_a[next_dpi_index] & !(dpi_rt[next_dpi_index]))
             {
                 send_byte |= 0b10000000;
             }
-            if (dpi_b[next_dpi_index])
+            if (dpi_b[next_dpi_index] & !(dpi_rt[next_dpi_index]))
             {
                 send_byte |= 0b01000000;
             }
@@ -2273,6 +2273,14 @@ static void IRAM_ATTR spi_task(void *arg)
             if (dpi_y[next_dpi_index])
             {
                 send_byte |= 0b00010000;
+            }
+            if (dpi_a[next_dpi_index] & dpi_rt[next_dpi_index])
+            {
+                send_byte |= 0b00001000;
+            }
+            if (dpi_b[next_dpi_index] & dpi_rt[next_dpi_index])
+            {
+                send_byte |= 0b00000100;
             }
             if (dpi_rt[next_dpi_index])
             {
