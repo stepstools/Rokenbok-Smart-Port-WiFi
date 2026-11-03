@@ -2720,8 +2720,9 @@ static void IRAM_ATTR wifi_led_timer_callback(void *arg)
 /// @brief Starts a 5 second timer when the reset button is pressed.
 /// @param arg Unused
 /// @return void
-static void IRAM_ATTR reset_isr_handler()
+static void IRAM_ATTR reset_isr_handler(void *arg)
 {
+    (void)arg;
     if (gpio_get_level(GPIO_RESET) == 0) { // Reset Pressed
         esp_timer_stop(wifi_led_timer);
         esp_timer_start_periodic(wifi_led_timer, 0.1 * 1000000); // 0.1 Second Interval
