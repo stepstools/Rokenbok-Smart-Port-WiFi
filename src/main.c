@@ -10,7 +10,6 @@
 #include <esp_system.h>
 #include "esp_wifi.h"
 #include "esp_event.h"
-#include "esp_log.h"
 #include "esp_http_server.h"
 #include "esp_http_client.h"
 #include "esp_netif.h"
@@ -21,6 +20,7 @@
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
 #include "esp_ota_ops.h"
+// #include "esp_log.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -162,10 +162,6 @@ uint8_t sp_down = 0x00;
 uint8_t sp_right = 0x00;
 uint8_t sp_left = 0x00;
 uint8_t sp_rt = 0x00;
-// uint8_t sp_sel_button = 0x00;
-// uint8_t sp_lt = 0x00;
-// uint8_t sp_share = 0x00;
-// uint8_t sp_is16SEL = 0x00;
 uint8_t sp_priority_byte = 0x00;
 
 uint8_t dpi_a[4] = {false, false, false, false};
@@ -298,32 +294,6 @@ static inline void process_button_bit(volatile uint8_t *sp_byte, uint8_t sp_bit,
 /// @return Error Code
 esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
 {
-    // switch(evt->event_id) {
-    //     case HTTP_EVENT_ERROR:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ERROR");
-    //         break;
-    //     case HTTP_EVENT_ON_CONNECTED:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_CONNECTED");
-    //         break;
-    //     case HTTP_EVENT_HEADER_SENT:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_HEADER_SENT");
-    //         break;
-    //     case HTTP_EVENT_ON_HEADER:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-    //         break;
-    //     case HTTP_EVENT_ON_DATA:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-    //         break;
-    //     case HTTP_EVENT_ON_FINISH:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ON_FINISH");
-    //         break;
-    //     case HTTP_EVENT_DISCONNECTED:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_DISCONNECTED");
-    //         break;
-    //     case HTTP_EVENT_REDIRECT:
-    //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_REDIRECT");
-    //         break;
-    // }
     return ESP_OK;
 }
 
@@ -339,7 +309,6 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
         if (control_keys[i] == control_key) // Control Key Found
         {
             controller_index = i;
-            // ESP_LOGI("SP", "CONTROL KEY %i ALREADY ASSIGNED TO CONTROLLER %i", control_key, i);
             break;
         }
     }
@@ -357,7 +326,6 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
                 {
                     controller_enable_bitmask &= ~(0b00000001 << ((i + 4) % 8));
                 }
-                // ESP_LOGI("SP", "CONTROL KEY %i NOW ASSIGNED TO CONTROLLER %i", control_key, i);
                 break;
             }
         }
@@ -365,7 +333,6 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
 
     if (controller_index == 255) // No Empty Spots Available
     {
-        // ESP_LOGI("SP", "NO AVAILABLE CONTROLLERS TO ASSIGN");
         return 0xFF;
     }
 
@@ -515,46 +482,6 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
             break;
 
-        // UTILITY CONTROL CODES
-        // case 0x40: // Soft Reset
-        //     enable_control[0] = false;
-        //     enable_control[1] = false;
-        //     enable_control[2] = false;
-        //     enable_control[3] = false;
-        //     enable_control[4] = false;
-        //     enable_control[5] = false;
-        //     enable_control[6] = false;
-        //     enable_control[7] = false;
-
-        //     controller_enable_bitmask = 0xFF;
-
-        //     selects[0] = 0x0F;
-        //     selects[1] = 0x0F;
-        //     selects[2] = 0x0F;
-        //     selects[3] = 0x0F;
-        //     selects[4] = 0x0F;
-        //     selects[5] = 0x0F;
-        //     selects[6] = 0x0F;
-        //     selects[7] = 0x0F;
-
-        //     sp_a = 0x00;
-        //     sp_b = 0x00;
-        //     sp_x = 0x00;
-        //     sp_y = 0x00;
-        //     sp_up = 0x00;
-        //     sp_down = 0x00;
-        //     sp_right = 0x00;
-        //     sp_left = 0x00;
-        //     sp_rt = 0x00;
-
-        //     sp_priority_byte = 0xFF;
-
-        //     vTaskDelay(pdMS_TO_TICKS(1000));
-        //     break;
-
-        // case 0x41: // Hard Reset the ESP
-        //     esp_restart();
-        //     break;
         default:
             break;
         }
@@ -689,7 +616,6 @@ static esp_err_t websocket_handler(httpd_req_t *req)
 {
     if (req->method == HTTP_GET)
     {
-        // ESP_LOGI("WS", "New Websocket Connection Opened");
         return ESP_OK;
     }
     httpd_ws_frame_t ws_pkt;
@@ -699,29 +625,26 @@ static esp_err_t websocket_handler(httpd_req_t *req)
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0); // Set max_len = 0 to get the frame length
     if (ret != ESP_OK)
     {
-        ESP_LOGE("WS", "httpd_ws_recv_frame failed to get frame length with %d!", ret);
+        // ESP_LOGE("WS", "httpd_ws_recv_frame failed to get frame length with %d!", ret);
         return ret;
     }
-    // ESP_LOGI("WS", "Frame length is %d", ws_pkt.len);
 
     if (ws_pkt.len)
     {
         buf = calloc(1, ws_pkt.len + 1); // ws_pkt.len + 1 is for NULL termination as we are expecting a string.
         if (buf == NULL)
         {
-            ESP_LOGE("WS", "Failed to calloc memory for buffer!");
+            // ESP_LOGE("WS", "Failed to calloc memory for buffer!");
             return ESP_ERR_NO_MEM;
         }
         ws_pkt.payload = buf;
         ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len); // Set max_len = ws_pkt.len to get the frame payload.
         if (ret != ESP_OK)
         {
-            ESP_LOGE("WS", "httpd_ws_recv_frame failed to get frame payload with %d!", ret);
+            // ESP_LOGE("WS", "httpd_ws_recv_frame failed to get frame payload with %d!", ret);
             free(buf);
             return ret;
         }
-        // ESP_LOGI("WS", "Got packet with message: %s", ws_pkt.payload);
-        // ESP_LOGI("WS", "Packet type: %d", ws_pkt.type);
     }
 
     if (ws_pkt.type == HTTPD_WS_TYPE_BINARY)
@@ -781,7 +704,6 @@ static esp_err_t websocket_handler(httpd_req_t *req)
         }
         else if (ws_pkt.payload[0] == 0xC1 && ws_pkt.len > 1) // Request For Control Key
         {
-            // ESP_LOGI("WS", "RECEIVED REQUEST FOR NEW CONTROL KEY, ASSIGNING %i", next_control_key);
             static uint8_t send_data[3];
             send_data[0] = 0xC1;
             send_data[1] = ws_pkt.payload[1];
@@ -836,7 +758,6 @@ static esp_err_t websocket_handler(httpd_req_t *req)
                 received_string[ws_pkt.len - 2] = '\0';
 
                 snprintf(control_key_user_names[ws_pkt.payload[1]], 17, received_string);
-                // ESP_LOGI("TEST", "Username: %s", control_key_user_names[ws_pkt.payload[1]]);
             }
         }
         else if (ws_pkt.payload[0] == 0xC4) // Request For User Names
@@ -886,8 +807,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
     }
     else if (ws_pkt.type == HTTPD_WS_TYPE_TEXT)
     {
-        ESP_LOGI("WS", "Received Text: %s", ws_pkt.payload);
-        // httpd_ws_send_frame(req, &ws_pkt); // Echo Text Back
+        // ESP_LOGI("WS", "Received Text: %s", ws_pkt.payload);
     }
     free(buf);
     return ESP_OK;
@@ -1040,7 +960,6 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    // ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
     char rec_share_mode[6];
@@ -1349,7 +1268,6 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    // ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
 
@@ -1377,7 +1295,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         esp_ota_handle_t update_handle = 0;
         const esp_partition_t *update_partition = NULL;
 
-        ESP_LOGI("OTA", "Starting OTA Update");
+        // ESP_LOGI("OTA", "Starting OTA Update");
 
         esp_http_client_config_t config = {
             .url = OTA_URL,
@@ -1389,7 +1307,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         err = esp_http_client_open(client, 0);
         if (err != ESP_OK)
         {
-            ESP_LOGE("HTTP", "Failed to open HTTP connection: %s", esp_err_to_name(err));
+            // ESP_LOGE("HTTP", "Failed to open HTTP connection: %s", esp_err_to_name(err));
             esp_http_client_cleanup(client);
             return err;
         }
@@ -1401,7 +1319,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
         if (err != ESP_OK)
         {
-            ESP_LOGE("OTA", "esp_ota_begin failed, error=%s", esp_err_to_name(err));
+            // ESP_LOGE("OTA", "esp_ota_begin failed, error=%s", esp_err_to_name(err));
             esp_http_client_cleanup(client);
             return err;
         }
@@ -1414,35 +1332,34 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
             err = esp_ota_write(update_handle, (const void *)ota_write_data, data_read);
             if (err != ESP_OK)
             {
-                ESP_LOGE("OTA", "Error: esp_ota_write failed! err=0x%x", err);
+                // ESP_LOGE("OTA", "Error: esp_ota_write failed! err=0x%x", err);
                 esp_http_client_cleanup(client);
                 esp_ota_end(update_handle);
                 return err;
             }
             binary_file_len += data_read;
-            // ESP_LOGI("OTA", "Written image length %d", binary_file_len);
         }
 
         if (data_read < 0)
         {
-            ESP_LOGE("HTTP", "Error: SSL data read error");
+            // ESP_LOGE("HTTP", "Error: SSL data read error");
             esp_http_client_cleanup(client);
             esp_ota_end(update_handle);
             return err;
         }
 
-        ESP_LOGI("OTA", "Total Write binary data length: %d", binary_file_len);
+        // ESP_LOGI("OTA", "Total Write binary data length: %d", binary_file_len);
 
         if (esp_ota_end(update_handle) != ESP_OK)
         {
-            ESP_LOGE("OTA", "Error: esp_ota_end failed! err=0x%x", err);
+            // ESP_LOGE("OTA", "Error: esp_ota_end failed! err=0x%x", err);
             return err;
         }
 
         err = esp_ota_set_boot_partition(update_partition);
         if (err != ESP_OK)
         {
-            ESP_LOGE("OTA", "esp_ota_set_boot_partition failed! err=0x%x", err);
+            // ESP_LOGE("OTA", "esp_ota_set_boot_partition failed! err=0x%x", err);
             return err;
         }
 
@@ -1451,7 +1368,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-        ESP_LOGI("OTA", "OTA update completed. Rebooting...");
+        // ESP_LOGI("OTA", "OTA update completed. Rebooting...");
         esp_restart();
     }
     else
@@ -1511,7 +1428,6 @@ static esp_err_t init_form_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    // ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
     char rec_ssid[MAX_WIFI_SSID_LEN * 3 + 1];         // Times 3 allows for percent encoding.
@@ -1676,15 +1592,13 @@ esp_err_t update_post_handler(httpd_req_t *req)
         if (recv_len == HTTPD_SOCK_ERR_TIMEOUT)
         {
             continue;
-
-            // Serious Error: Abort OTA
         }
+        // Serious Error: Abort OTA
         else if (recv_len <= 0)
         {
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Protocol Error");
             return ESP_FAIL;
         }
-
         // Successful Upload: Flash firmware chunk
         if (esp_ota_write(ota_handle, (const void *)buffer, recv_len) != ESP_OK)
         {
@@ -1728,8 +1642,6 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
     config.max_uri_handlers = 16;
     config.stack_size = 8192;
 
-    // Start the httpd server
-    // ESP_LOGI("WEBSERVER", "Starting server on port: '%d'", config.server_port);
     if (httpd_start(&server, &config) == ESP_OK)
     {
         if (page_version == 0)
@@ -1755,7 +1667,7 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
         }
         return server;
     }
-    ESP_LOGE("WEBSERVER", "Error starting server!");
+    // ESP_LOGE("WEBSERVER", "Error starting server!");
     return NULL;
 }
 
@@ -1885,8 +1797,6 @@ static inline void usb_process_rx_data()
                 {
                     selects[controller_index] = b1;
                     uint8_t dpi_index = controller_index - 8;
-                    // usb_rx_bytes[byte_count+2] = First Buttons // Bits (MSB-LSB) = BLANK/BLANK/BLANK/BLANK/UP/DOWN/RIGHT/LEFT
-                    // usb_rx_bytes[byte_count+3] = Second Buttons // Bits (MSB-LSB) = BLANK/BLANK/BLANK/A/B/X/Y/RT
                     dpi_up[dpi_index] = b2 & 0b00001000;
                     dpi_down[dpi_index] = b2 & 0b00000100;
                     dpi_right[dpi_index] = b2 & 0b00000010;
@@ -1932,7 +1842,7 @@ static inline void usb_tx_status()
 /// @return void
 static void usb_task(void *arg)
 {
-    while (1)
+    while (true)
     {
         uint8_t serial_read_byte;
         // Read single bytes from USB-SERIAL-JTAG buffer
@@ -2407,7 +2317,6 @@ static void IRAM_ATTR spi_task(void *arg)
 /// @return void
 static void reset_erase_nvs(void)
 {
-    // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -2416,30 +2325,28 @@ static void reset_erase_nvs(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // Open NVS
     nvs_handle_t nvs_handle;
     ret = nvs_open("storage", NVS_READWRITE, &nvs_handle);
     if (ret != ESP_OK)
     {
-        ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+        // ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
         return;
     }
 
     ret = nvs_flash_erase();
     if (ret == ESP_OK)
     {
-        ESP_LOGI("NVS", "NVS Succesfully Erased");
+        // ESP_LOGI("NVS", "NVS Succesfully Erased");
     }
     else if (ret == ESP_ERR_NOT_FOUND)
     {
-        ESP_LOGW("NVS", "NVS partition to be erased not found.");
+        // ESP_LOGW("NVS", "NVS partition to be erased not found.");
     }
     else
     {
-        ESP_LOGE("NVS", "Error (%s) while attempting to erase NVS!", esp_err_to_name(ret));
+        // ESP_LOGE("NVS", "Error (%s) while attempting to erase NVS!", esp_err_to_name(ret));
     }
 
-    // Close NVS
     nvs_close(nvs_handle);
 }
 
@@ -2454,29 +2361,28 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     if (event_id == WIFI_EVENT_STA_START)
     {
         esp_timer_start_periodic(wifi_led_timer, 0.25 * 1000000); // 0.25 Second Interval
-        // ESP_LOGI("WIFI", "WiFi station started. Connecting to the saved SSID.");
         esp_wifi_connect();
     }
     else if (event_id == WIFI_EVENT_STA_CONNECTED)
     {
-        // ESP_LOGI("WIFI", "WiFi station connected to saved credentials.");
+        // ESP_LOGGI("WIFI", "WiFi station connected to saved credentials.");
     }
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         esp_timer_start_periodic(wifi_led_timer, 0.25 * 1000000); // 0.25 Second Interval
-        ESP_LOGE("WIFI", "WiFi station disconnected. Reconnecting...");
+        // ESP_LOGE("WIFI", "WiFi station disconnected. Reconnecting...");
         esp_wifi_connect();
         connection_attempts++;
         if (connection_attempts > WIFI_CONNECT_ATTEMPTS)
         {
-            ESP_LOGE("WIFI", "Maximum WiFi station connection attempts reached. Clearing NVS and rebooting.");
+            // ESP_LOGE("WIFI", "Maximum WiFi station connection attempts reached. Clearing NVS and rebooting.");
             reset_erase_nvs();
             esp_restart();
         }
     }
     else if (event_id == IP_EVENT_STA_GOT_IP)
     {
-        ESP_LOGI("WIFI", "WiFi station received IP address.");
+        // ESP_LOGI("WIFI", "WiFi station received IP address.");
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
         esp_timer_stop(wifi_led_timer);
         gpio_set_level(GPIO_WIFI_LED, 1); // Turn WIFI_LED on.
@@ -2484,16 +2390,16 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     // ACCESS POINT EVENTS
     else if (event_id == WIFI_EVENT_AP_START)
     {
-        ESP_LOGI("WIFI", "WiFi Access Point Started");
+        // ESP_LOGI("WIFI", "WiFi Access Point Started");
         esp_timer_start_periodic(wifi_led_timer, 1 * 1000000); // 1 Second Interval
     }
     else if (event_id == WIFI_EVENT_AP_STACONNECTED)
     {
-        ESP_LOGI("WIFI", "Station Connected to Access Point ");
+        // ESP_LOGI("WIFI", "Station Connected to Access Point ");
     }
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED)
     {
-        ESP_LOGI("WIFI", "Station Disconnected from Access Point ");
+        // ESP_LOGI("WIFI", "Station Disconnected from Access Point ");
     }
 }
 
@@ -2642,7 +2548,7 @@ static void wifi_init_from_nvs(void)
     ret = nvs_open("storage", NVS_READWRITE, &nvs_handle);
     if (ret != ESP_OK)
     {
-        ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
+        // ESP_LOGE("NVS", "Error (%s) opening NVS handle!", esp_err_to_name(ret));
         return;
     }
 
@@ -2685,23 +2591,6 @@ static void wifi_init_from_nvs(void)
         size = sizeof(nvs_vehicle_names[14]);
         nvs_get_str(nvs_handle, "v15_name", nvs_vehicle_names[14], &size);
     }
-    // else {
-    //     strcpy(nvs_vehicle_names[0], "NULL");
-    //     strcpy(nvs_vehicle_names[1], "NULL");
-    //     strcpy(nvs_vehicle_names[2], "NULL");
-    //     strcpy(nvs_vehicle_names[3], "NULL");
-    //     strcpy(nvs_vehicle_names[4], "NULL");
-    //     strcpy(nvs_vehicle_names[5], "NULL");
-    //     strcpy(nvs_vehicle_names[6], "NULL");
-    //     strcpy(nvs_vehicle_names[7], "NULL");
-    //     strcpy(nvs_vehicle_names[8], "NULL");
-    //     strcpy(nvs_vehicle_names[9], "NULL");
-    //     strcpy(nvs_vehicle_names[10], "NULL");
-    //     strcpy(nvs_vehicle_names[11], "NULL");
-    //     strcpy(nvs_vehicle_names[12], "NULL");
-    //     strcpy(nvs_vehicle_names[13], "NULL");
-    //     strcpy(nvs_vehicle_names[14], "NULL");
-    // }
 
     char nvs_ssid[MAX_WIFI_SSID_LEN];
     char nvs_password[MAX_WIFI_PASSWORD_LEN];
@@ -2742,13 +2631,9 @@ static void wifi_init_from_nvs(void)
                         if (ret == ESP_OK)
                         {
                             // Connect to WiFi using retrieved information including IP arrays.
-                            ESP_LOGI("NVS", "WiFi credentials found in NVS. Connecting to WiFi as a station.");
-                            // ESP_LOGI("NVS", "Retrieved Admin Password: %s", nvs_admin_password);
-                            // ESP_LOGI("NVS", "Retrieved SSID: %s", nvs_ssid);
-                            // ESP_LOGI("NVS", "Retrieved Password: %s", nvs_password);
+                            // ESP_LOGI("NVS", "WiFi credentials found in NVS. Connecting to WiFi as a station.");
                             if ((nvs_password[0] == 'X') && (nvs_password[1] == '\0'))
                             {
-                                // ESP_LOGI("NVS", "Stored password was X, indicating no password");
                                 nvs_password[0] = '\0';
                             }
                             init_wifi_sta(nvs_ssid, nvs_password, nvs_gateway, nvs_static, nvs_netmask);
@@ -2757,37 +2642,35 @@ static void wifi_init_from_nvs(void)
                     }
                     else
                     {
-                        ESP_LOGE("NVS", "Error (%s) reading Net Mask IP from NVS!", esp_err_to_name(ret));
+                        // ESP_LOGE("NVS", "Error (%s) reading Net Mask IP from NVS!", esp_err_to_name(ret));
                     }
                 }
                 else
                 {
-                    ESP_LOGE("NVS", "Error (%s) reading Static IP from NVS!", esp_err_to_name(ret));
+                    // ESP_LOGE("NVS", "Error (%s) reading Static IP from NVS!", esp_err_to_name(ret));
                 }
             }
             else
             {
-                ESP_LOGE("NVS", "Error (%s) reading Gateway IP from NVS!", esp_err_to_name(ret));
+                // ESP_LOGE("NVS", "Error (%s) reading Gateway IP from NVS!", esp_err_to_name(ret));
             }
         }
         else
         {
-            ESP_LOGE("NVS", "Error (%s) reading WiFi password from NVS!", esp_err_to_name(ret));
+            // ESP_LOGE("NVS", "Error (%s) reading WiFi password from NVS!", esp_err_to_name(ret));
         }
     }
     // If credentials are not found, initialize as an AP and start the webserver.
     else
     {
-        ESP_LOGI("NVS", "WiFi credentials not found in NVS. Creating WiFi access point.");
+        // ESP_LOGI("NVS", "WiFi credentials not found in NVS. Creating WiFi access point.");
 
         init_wifi_ap(); // Create a WiFi access point
 
         httpd_handle_t server = start_http_webserver(1); // Begin the http Webserver (1 = Initialization Version)
 
-        // ESP_LOGI("WEBSERVER", "HTTP server started. Open a browser and connect to the ESP32 access point to enter WiFi credentials.");
-
         // Wait for the user to enter WiFi credentials and reboot the ESP32
-        while (1)
+        while (true)
         {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -2800,22 +2683,14 @@ static void wifi_init_from_nvs(void)
                 ret = nvs_get_str(nvs_handle, "wifi_password", nvs_password, &size);
                 if (ret == ESP_OK)
                 {
-                    ESP_LOGI("WIFI", "WiFi credentials entered by user. Rebooting...");
-
-                    // Stop the HTTP server before rebooting
-                    httpd_stop(server);
-
-                    // Delay to allow the response to be sent before rebooting
-                    vTaskDelay(pdMS_TO_TICKS(1000));
-
-                    // Reboot the ESP32
-                    esp_restart();
+                    // ESP_LOGI("WIFI", "WiFi credentials entered by user. Rebooting...");
+                    httpd_stop(server);              // Stop the HTTP server before rebooting
+                    vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow the response to be sent before rebooting
+                    esp_restart();                   // Reboot the ESP32
                 }
             }
         }
     }
-
-    // Close NVS
     nvs_close(nvs_handle);
 }
 
@@ -2863,12 +2738,6 @@ static void IRAM_ATTR sync_timer_callback(void *arg)
 /// @return void
 static void IRAM_ATTR timeout_timer_callback(void *arg)
 {
-    // ESP_LOGI("TIMER", "TIMEOUT");
-    //  timeouts[0] = true;
-    //  timeouts[1] = true;
-    //  timeouts[2] = true;
-    //  timeouts[3] = true;
-
     for (uint8_t i = 0; i < 8; i++)
     {
         if ((control_keys[i] > 13) && (timeouts[i] == false)) // "If that controller was being used (0-12 keys are reserved) and hasn't been used in this timeout cycle."
@@ -2900,8 +2769,6 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
     }
 
     esp_timer_start_once(post_timeout_timer, 0.1 * 1000000); // 0.1 Second Interval
-
-    // ESP_LOGI("RAM", "RAM left %lu", esp_get_free_heap_size()); // Log remaining heap in bytes.
 }
 
 /// @brief Runs 0.1 seconds after the timeout_timer_callback. Gives time for selections to propagate before disabling.
@@ -2909,7 +2776,6 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
 /// @return void
 static void IRAM_ATTR post_timeout_timer_callback(void *arg)
 {
-    // ESP_LOGI("TIMER", "POST TIMEOUT");
     for (uint8_t i = 0; i < 12; i++)
     {
         if (control_keys[i] == 0)
@@ -3124,8 +2990,4 @@ void app_main(void)
 
     // Initialize the USB Task
     xTaskCreate(&usb_task, "USB_TASK", 4096, NULL, 10, NULL);
-
-    // while (1) {
-    //     vTaskDelay(pdMS_TO_TICKS(100));
-    // }
 }
