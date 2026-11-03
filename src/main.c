@@ -500,29 +500,11 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             break;
 
         case 0x19: // Unpress All
-            sp_a &= ~(0b00000001 << bitwise_index);
-            sp_b &= ~(0b00000001 << bitwise_index);
-            sp_x &= ~(0b00000001 << bitwise_index);
-            sp_y &= ~(0b00000001 << bitwise_index);
-            sp_up &= ~(0b00000001 << bitwise_index);
-            sp_down &= ~(0b00000001 << bitwise_index);
-            sp_left &= ~(0b00000001 << bitwise_index);
-            sp_right &= ~(0b00000001 << bitwise_index);
-            sp_rt &= ~(0b00000001 << bitwise_index);
-            sp_priority_byte |= (0b00000001 << bitwise_index);
+            clear_sp_bits(bitwise_index);
             break;
 
         case 0x1A: // Release Controller
-            sp_a &= ~(0b00000001 << bitwise_index);
-            sp_b &= ~(0b00000001 << bitwise_index);
-            sp_x &= ~(0b00000001 << bitwise_index);
-            sp_y &= ~(0b00000001 << bitwise_index);
-            sp_up &= ~(0b00000001 << bitwise_index);
-            sp_down &= ~(0b00000001 << bitwise_index);
-            sp_left &= ~(0b00000001 << bitwise_index);
-            sp_right &= ~(0b00000001 << bitwise_index);
-            sp_rt &= ~(0b00000001 << bitwise_index);
-            sp_priority_byte |= (0b00000001 << bitwise_index);
+            clear_sp_bits(bitwise_index);
 
             selects[controller_index] = 15;
             select_changed = true;
@@ -2170,16 +2152,7 @@ static void IRAM_ATTR spi_task(void *arg)
                         // Clear out virtual controller data and free for use.
                         control_keys[i] = 1;
                         selects[i] = 0x0F;
-                        sp_a &= ~(0b00000001 << bitwise_index);
-                        sp_b &= ~(0b00000001 << bitwise_index);
-                        sp_x &= ~(0b00000001 << bitwise_index);
-                        sp_y &= ~(0b00000001 << bitwise_index);
-                        sp_up &= ~(0b00000001 << bitwise_index);
-                        sp_down &= ~(0b00000001 << bitwise_index);
-                        sp_left &= ~(0b00000001 << bitwise_index);
-                        sp_right &= ~(0b00000001 << bitwise_index);
-                        sp_rt &= ~(0b00000001 << bitwise_index);
-                        sp_priority_byte |= (0b00000001 << bitwise_index);
+                        clear_sp_bits(bitwise_index);
                         controller_enable[i] = false;
                         controller_enable_bitmask |= (0b00000001 << bitwise_index); // THIS MAY BE BORKED????
                     }
@@ -2192,16 +2165,7 @@ static void IRAM_ATTR spi_task(void *arg)
                         // Free it back up for use.
                         control_keys[i] = 0;
                         selects[i] = 0x0F;
-                        sp_a &= ~(0b00000001 << bitwise_index);
-                        sp_b &= ~(0b00000001 << bitwise_index);
-                        sp_x &= ~(0b00000001 << bitwise_index);
-                        sp_y &= ~(0b00000001 << bitwise_index);
-                        sp_up &= ~(0b00000001 << bitwise_index);
-                        sp_down &= ~(0b00000001 << bitwise_index);
-                        sp_left &= ~(0b00000001 << bitwise_index);
-                        sp_right &= ~(0b00000001 << bitwise_index);
-                        sp_rt &= ~(0b00000001 << bitwise_index);
-                        sp_priority_byte |= (0b00000001 << bitwise_index);
+                        clear_sp_bits(bitwise_index);
                         timeouts[i] = false;
                     }
                 }
@@ -2912,16 +2876,7 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
             uint8_t bitwise_index = (i + 4) % 8;
             control_keys[i] = 0;
             selects[i] = 0x0F;
-            sp_a &= ~(0b00000001 << bitwise_index);
-            sp_b &= ~(0b00000001 << bitwise_index);
-            sp_x &= ~(0b00000001 << bitwise_index);
-            sp_y &= ~(0b00000001 << bitwise_index);
-            sp_up &= ~(0b00000001 << bitwise_index);
-            sp_down &= ~(0b00000001 << bitwise_index);
-            sp_left &= ~(0b00000001 << bitwise_index);
-            sp_right &= ~(0b00000001 << bitwise_index);
-            sp_rt &= ~(0b00000001 << bitwise_index);
-            sp_priority_byte |= (0b00000001 << bitwise_index);
+            clear_sp_bits(bitwise_index);
         }
         timeouts[i] = false;
     }
