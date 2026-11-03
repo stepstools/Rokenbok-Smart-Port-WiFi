@@ -18,6 +18,7 @@
 #include "driver/gpio.h"
 #include "driver/gpio_filter.h"
 #include "driver/spi_slave.h"
+#include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
 #include "esp_ota_ops.h"
 
@@ -121,6 +122,9 @@ enum SeriesState : uint8_t
 #define GPIO_WIFI_LED 18
 #define GPIO_SP_LED 17
 
+// USB Defines
+#define USB_BUF_SIZE 256
+
 //  __      __     _____  _____          ____  _      ______  _____   //
 //  \ \    / /\   |  __ \|_   _|   /\   |  _ \| |    |  ____|/ ____|  //
 //   \ \  / /  \  | |__) | | |    /  \  | |_) | |    | |__  | (___    //
@@ -145,7 +149,7 @@ uint8_t selects[12] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0
 uint8_t timeouts[12] = {false, false, false, false, false, false, false, false, false, false, false, false};          // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
 uint8_t controller_enable[12] = {false, false, false, false, false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4 // FALSE = Normal, TRUE = SP Controlled
 uint8_t control_keys[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};                  // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
-uint8_t next_control_key = 2;                                                                                         // 0 = Unused, 1 = Physical Controller Plugged In
+uint8_t next_control_key = 14;                                                                                        // 0 = Unused, 1 = Physical Controller Plugged In, 2-13 = USB Players
 uint8_t next_dpi_index = 0;
 
 uint8_t controller_enable_bitmask = 0b11111111; // V4|V3|V2|V1|P4|P3|P2|P1 // 0 = Enabled, 1 = Disabled
@@ -186,6 +190,10 @@ esp_timer_handle_t timeout_timer;
 esp_timer_handle_t post_timeout_timer;
 esp_timer_handle_t reset_button_timer;
 esp_timer_handle_t wifi_led_timer;
+
+// Array for Received USB Bytes
+uint8_t usb_rx_bytes[128];
+uint8_t usb_rx_index = 0;
 
 //   _    _ ______ _      _____  ______ _____    //
 //  | |  | |  ____| |    |  __ \|  ____|  __ \   //
@@ -237,6 +245,45 @@ bool contains(uint8_t array[], size_t size, uint8_t value)
         }
     }
     return false;
+}
+
+/// @brief Clear all Smart Port buttons for a specific controller.
+/// @param bit_number The bit number of the controller to clear (V4|V3|V2|V1|P4|P3|P2|P1).
+/// @return void
+static inline void clear_sp_bits(uint8_t bit_number)
+{
+    uint8_t clear_mask = ~(0b00000001 << bit_number);
+    sp_a &= clear_mask;
+    sp_b &= clear_mask;
+    sp_x &= clear_mask;
+    sp_y &= clear_mask;
+    sp_up &= clear_mask;
+    sp_down &= clear_mask;
+    sp_left &= clear_mask;
+    sp_right &= clear_mask;
+    sp_rt &= clear_mask;
+    sp_priority_byte |= (0b00000001 << bit_number);
+    return;
+}
+
+/// @brief Evaluates if a bit for a contoller button has changed and updates it if necessary.
+/// @param sp_byte Pointer to the Smart Port button variable to be updated.
+/// @param sp_bit The bit number in the Smart Port button variable to be updated (V4|V3|V2|V1|P4|P3|P2|P1).
+/// @param serial_byte The inbound serial byte to process.
+/// @param serial_bit The bit number in the inbound serial byte to process.
+/// @param priority_byte Pointer to the Smart Port "priority" byte to be updated.
+/// @return void
+static inline void process_button_bit(volatile uint8_t *sp_byte, uint8_t sp_bit, uint8_t serial_byte, uint8_t serial_bit, volatile uint8_t *priority_byte)
+{
+    uint8_t serial_bit_val = (serial_byte >> serial_bit) & 1;
+    uint8_t sp_bit_val = (*sp_byte >> sp_bit) & 1;
+    uint8_t changed = serial_bit_val ^ sp_bit_val;
+
+    if (changed)
+    {
+        *sp_byte ^= (1 << sp_bit);
+        *priority_byte |= (1 << sp_bit);
+    }
 }
 
 //  __          ________ ____   _____ ______ _______      ________ _____    //
@@ -766,9 +813,9 @@ static esp_err_t websocket_handler(httpd_req_t *req)
 
             snprintf(control_key_user_names[next_control_key], 17, "ID #%i", next_control_key);
 
-            if (next_control_key == 255) // Handle the rollover from 255 to 1. 0 is used to indicate no control key.
+            if (next_control_key == 255) // Handle the rollover from 255 to 14.  0-13 are reserved.
             {
-                next_control_key = 2;
+                next_control_key = 14;
             }
             else
             {
@@ -1730,6 +1777,211 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
     return NULL;
 }
 
+//   _    _  _____ ____    //
+//  | |  | |/ ____|  _ \   //
+//  | |  | | (___ | |_) |  //
+//  | |  | |\___ \|  _ <   //
+//  | |__| |____) | |_) |  //
+//   \____/|_____/|____/   //
+
+/// @brief Process data in completed usb_rx_bytes[].
+/// @return void
+static inline void usb_process_rx_data()
+{
+    if (usb_rx_bytes[0] == 253) // Process Config Bytes
+    {
+        share_mode = usb_rx_bytes[1] ? 1 : 0;
+        is16sel_mode = usb_rx_bytes[2] ? 1 : 0;
+    }
+    else if (usb_rx_bytes[0] == 254) // Process Player Bytes
+    {
+        for (uint8_t controller_index = 0; controller_index < 12; controller_index++)
+        {
+            if (control_keys[controller_index] < 2)
+            {
+                continue;
+            }
+            else
+            {
+                for (uint8_t byte_count = 1; byte_count < 128; byte_count = byte_count + 4)
+                {
+                    if (usb_rx_bytes[byte_count] == 255)
+                    {
+                        control_keys[controller_index] = 0;
+                        selects[controller_index] = 15;
+                        if (controller_index < 8)
+                        {
+                            uint8_t bitwise_index = (controller_index + 4) & 7;
+                            clear_sp_bits(bitwise_index);
+                        }
+                        else if (controller_index < 12)
+                        {
+                            uint8_t dpi_index = controller_index - 8;
+                            dpi_a[dpi_index] = false;
+                            dpi_b[dpi_index] = false;
+                            dpi_x[dpi_index] = false;
+                            dpi_y[dpi_index] = false;
+                            dpi_up[dpi_index] = false;
+                            dpi_down[dpi_index] = false;
+                            dpi_left[dpi_index] = false;
+                            dpi_right[dpi_index] = false;
+                            dpi_rt[dpi_index] = false;
+                        }
+                        break;
+                    }
+                    else if (usb_rx_bytes[byte_count] == control_keys[controller_index])
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Process All User IDs Sent in Data Stream, One at a Time
+        for (uint8_t byte_count = 1; byte_count < 252; byte_count = byte_count + 4)
+        {
+            if (usb_rx_bytes[byte_count] == 255)
+            {
+                return;
+            }
+            else
+            {
+                uint8_t controller_index = 255;
+                for (uint8_t controller = 0; controller < 12; controller++)
+                {
+                    if (control_keys[controller] == usb_rx_bytes[byte_count])
+                    {
+                        controller_index = controller;
+                        break;
+                    }
+                }
+
+                if (controller_index == 255)
+                {
+                    for (uint8_t controller = 0; controller < 12; controller++)
+                    {
+                        if (control_keys[controller] == 0)
+                        {
+                            controller_index = controller;
+                            control_keys[controller] = usb_rx_bytes[byte_count];
+                            controller_enable[controller] = true;
+                            if (controller_index < 8)
+                            {
+                                controller_enable_bitmask &= ~(0b00000001 << ((controller + 4) & 7));
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                if (controller_index == 255)
+                {
+                    continue;
+                }
+
+                uint8_t b1 = usb_rx_bytes[byte_count + 1];
+                uint8_t b2 = usb_rx_bytes[byte_count + 2];
+                uint8_t b3 = usb_rx_bytes[byte_count + 3];
+
+                if (controller_index < 8)
+                {
+                    selects[controller_index] = b1;
+                    uint8_t bitwise_index = (controller_index + 4) & 7;
+
+                    process_button_bit(&sp_left, bitwise_index, b2, 0, &sp_priority_byte);
+                    process_button_bit(&sp_right, bitwise_index, b2, 1, &sp_priority_byte);
+                    process_button_bit(&sp_down, bitwise_index, b2, 2, &sp_priority_byte);
+                    process_button_bit(&sp_up, bitwise_index, b2, 3, &sp_priority_byte);
+
+                    process_button_bit(&sp_rt, bitwise_index, b3, 0, &sp_priority_byte);
+                    process_button_bit(&sp_y, bitwise_index, b3, 1, &sp_priority_byte);
+                    process_button_bit(&sp_x, bitwise_index, b3, 2, &sp_priority_byte);
+                    process_button_bit(&sp_b, bitwise_index, b3, 3, &sp_priority_byte);
+                    process_button_bit(&sp_a, bitwise_index, b3, 4, &sp_priority_byte);
+                }
+                else if (controller_index < 12)
+                {
+                    selects[controller_index] = b1;
+                    uint8_t dpi_index = controller_index - 8;
+                    // usb_rx_bytes[byte_count+2] = First Buttons // Bits (MSB-LSB) = BLANK/BLANK/BLANK/BLANK/UP/DOWN/RIGHT/LEFT
+                    // usb_rx_bytes[byte_count+3] = Second Buttons // Bits (MSB-LSB) = BLANK/BLANK/BLANK/A/B/X/Y/RT
+                    dpi_up[dpi_index] = b2 & 0b00001000;
+                    dpi_down[dpi_index] = b2 & 0b00000100;
+                    dpi_right[dpi_index] = b2 & 0b00000010;
+                    dpi_left[dpi_index] = b2 & 0b00000001;
+
+                    dpi_a[dpi_index] = b3 & 0b00010000;
+                    dpi_b[dpi_index] = b3 & 0b00001000;
+                    dpi_x[dpi_index] = b3 & 0b00000100;
+                    dpi_y[dpi_index] = b3 & 0b00000010;
+                    dpi_rt[dpi_index] = b3 & 0b00000001;
+                }
+            }
+        }
+    }
+}
+
+/// @brief Send current sp_status, control_keys[], and selects[] over USB Serial JTAG.
+/// @return void
+static inline void usb_tx_status()
+{
+    uint8_t tx_buffer[27];
+    uint8_t tx_buffer_index = 0;
+
+    tx_buffer[tx_buffer_index++] = 254;
+    tx_buffer[tx_buffer_index++] = sp_status;
+
+    for (uint8_t i = 0; i < 12; i++)
+    {
+        tx_buffer[tx_buffer_index++] = control_keys[i];
+    }
+    for (uint8_t i = 0; i < 12; i++)
+    {
+        tx_buffer[tx_buffer_index++] = selects[i];
+    }
+
+    tx_buffer[tx_buffer_index++] = 255;
+
+    usb_serial_jtag_write_bytes(tx_buffer, tx_buffer_index, pdMS_TO_TICKS(10));
+}
+
+/// @brief Read incoming USB bytes.
+/// @param arg xTask Arguments (Not Used)
+/// @return void
+static void usb_task(void *arg)
+{
+    while (1)
+    {
+        uint8_t serial_read_byte;
+        // Read single bytes from USB-SERIAL-JTAG buffer
+        int len = usb_serial_jtag_read_bytes(&serial_read_byte, 1, pdMS_TO_TICKS(10));
+
+        if (len > 0)
+        {
+            if (serial_read_byte == 253) // Start Config Bytes
+            {
+                usb_rx_bytes[0] = 253;
+                usb_rx_index = 1;
+            }
+            else if (serial_read_byte == 254) // Start Player Bytes
+            {
+                usb_rx_bytes[0] = 254;
+                usb_rx_index = 1;
+            }
+            else if (serial_read_byte == 255) // End Bytes
+            {
+                usb_rx_bytes[usb_rx_index] = 255;
+                usb_process_rx_data();
+                usb_tx_status();
+            }
+            else if (usb_rx_index < 127)
+            {
+                usb_rx_bytes[usb_rx_index++] = serial_read_byte;
+            }
+        }
+    }
+}
+
 //    _____ _____ _____   //
 //   / ____|  __ \_   _|  //
 //  | (___ | |__) || |    //
@@ -2655,7 +2907,7 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
 
     for (uint8_t i = 0; i < 8; i++)
     {
-        if ((control_keys[i] > 0) && (timeouts[i] == false)) // "If that controller was being used and hasn't been used in this timeout cycle."
+        if ((control_keys[i] > 13) && (timeouts[i] == false)) // "If that controller was being used (0-12 keys are reserved) and hasn't been used in this timeout cycle."
         {
             uint8_t bitwise_index = (i + 4) % 8;
             control_keys[i] = 0;
@@ -2675,7 +2927,7 @@ static void IRAM_ATTR timeout_timer_callback(void *arg)
     }
     for (uint8_t i = 8; i < 12; i++)
     {
-        if ((control_keys[i] > 0) && (timeouts[i] == false)) // "If that controller was being used and hasn't been used in this timeout cycle."
+        if ((control_keys[i] > 13) && (timeouts[i] == false)) // "If that controller was being used (0-12 keys are reserved) and hasn't been used in this timeout cycle."
         {
             control_keys[i] = 0;
             selects[i] = 0x0F;
@@ -2794,9 +3046,21 @@ void app_main(void)
         }
     }
 
-    // Initialize User Names for Control Keys 0 and 1
+    // Initialize User Names for Control Keys 0-13
     snprintf(control_key_user_names[0], 17, "No User");
     snprintf(control_key_user_names[1], 17, "Plugged In");
+    snprintf(control_key_user_names[2], 17, "USB 1");
+    snprintf(control_key_user_names[3], 17, "USB 2");
+    snprintf(control_key_user_names[4], 17, "USB 3");
+    snprintf(control_key_user_names[5], 17, "USB 4");
+    snprintf(control_key_user_names[6], 17, "USB 5");
+    snprintf(control_key_user_names[7], 17, "USB 6");
+    snprintf(control_key_user_names[8], 17, "USB 7");
+    snprintf(control_key_user_names[9], 17, "USB 8");
+    snprintf(control_key_user_names[10], 17, "USB 9");
+    snprintf(control_key_user_names[11], 17, "USB 10");
+    snprintf(control_key_user_names[12], 17, "USB 11");
+    snprintf(control_key_user_names[13], 17, "USB 12");
 
     // Setup GPIO Pins and Interrupts
     gpio_reset_pin(GPIO_SR);
@@ -2894,6 +3158,17 @@ void app_main(void)
         .name = "timeout_timer"};
     esp_timer_create(&timeout_timer_args, &timeout_timer);
     esp_timer_start_periodic(timeout_timer, controller_timeout * 1000000); // controller_timeout Second Interval
+
+    // Configuration for the USB Interface
+    usb_serial_jtag_driver_config_t usb_config = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
+    usb_config.rx_buffer_size = USB_BUF_SIZE * 2;
+    usb_config.tx_buffer_size = USB_BUF_SIZE * 2;
+
+    // Initialize USB Interface
+    ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_config));
+
+    // Initialize the USB Task
+    xTaskCreate(&usb_task, "USB_TASK", 4096, NULL, 10, NULL);
 
     // while (1) {
     //     vTaskDelay(pdMS_TO_TICKS(100));
