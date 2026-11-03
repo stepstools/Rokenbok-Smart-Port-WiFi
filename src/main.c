@@ -34,8 +34,10 @@
 #define MAX_WIFI_PASSWORD_LEN 64
 #define WIFI_CONNECT_ATTEMPTS 20
 
-// Smart Port Master Bytes
+// Smart Port Byte Codes Sent By Master and Slave
 #define NULL_CMD 0x00
+
+// Smart Port Byte Codes Sent By Master
 #define BCAST_TPADS 0xc0
 #define BCAST_SELECT 0xC1
 #define BCAST_END 0xC2
@@ -52,23 +54,62 @@
 #define NO_RADIO_PKT 0xCD
 #define HAVE_RADIO_PKT 0xCE
 
-// Smart Port Slave Bytes
-#define NULL_CMD 0x00
+// Smart Port Byte Codes Sent By Slave
 #define VERIFY_EDIT 0x80
 #define SLAVE_SYNC 0x81
 #define SLAVE_NO_INS 0x82
-#define SLAVE_WAIT_INS 0x83
-#define PACKET_INJECT_ATTRIB_BYTE 0x2D // Packet Injection
-#define ENABLE_ATTRIB_BYTE 0x0D // No Packet Injection
-#define DISABLE_ATTRIB_BYTE 0x00
-#define NO_SEL_TIMEOUT 0x00 // 1 = Controller Never Times Out, 0 = Normal V4|V3|V2|V1|P4|P3|P2|P1
+#define SLAVE_WANT_INS 0x83
+#define DISABLE_ATTRIB_BYTE 0x00       // Smart Port Control Disabled
+#define ENABLE_ATTRIB_BYTE 0x0D        // Smart Port Control Enabled, Packet Injection Disabled
+#define PACKET_INJECT_ATTRIB_BYTE 0x2D // Smart Port Control Enabled, Packet Injection Enabled
+#define NO_SEL_TIMEOUT 0x00            // 1 = Controller Never Times Out, 0 = Normal V4|V3|V2|V1|P4|P3|P2|P1
 
-// Series Logic Defines
-#define NO_SERIES 0
-#define SYNC_SERIES 1
-#define EDIT_TPADS_SERIES 2
-#define EDIT_SELECT_SERIES 3
-#define PKT_INJECT_SERIES 4
+// Smart Port State Machine Values
+enum SeriesState : uint8_t
+{
+    STATE_IDLE = 0,
+
+    STATE_SYNC_1,
+    STATE_SYNC_2,
+    STATE_SYNC_3,
+
+    STATE_EDIT_TPADS_1,
+    STATE_EDIT_TPADS_2,
+    STATE_EDIT_TPADS_3,
+    STATE_EDIT_TPADS_4,
+    STATE_EDIT_TPADS_5,
+    STATE_EDIT_TPADS_6,
+    STATE_EDIT_TPADS_7,
+    STATE_EDIT_TPADS_8,
+    STATE_EDIT_TPADS_9,
+    STATE_EDIT_TPADS_10,
+    STATE_EDIT_TPADS_11,
+    STATE_EDIT_TPADS_12,
+    STATE_EDIT_TPADS_13,
+    STATE_EDIT_TPADS_14,
+    STATE_EDIT_TPADS_15,
+    STATE_EDIT_TPADS_16,
+    STATE_EDIT_TPADS_17,
+    STATE_EDIT_TPADS_18,
+    STATE_EDIT_TPADS_19,
+
+    STATE_EDIT_SELECT_1,
+    STATE_EDIT_SELECT_2,
+    STATE_EDIT_SELECT_3,
+    STATE_EDIT_SELECT_4,
+    STATE_EDIT_SELECT_5,
+    STATE_EDIT_SELECT_6,
+    STATE_EDIT_SELECT_7,
+    STATE_EDIT_SELECT_8,
+    STATE_EDIT_SELECT_9,
+    STATE_EDIT_SELECT_10,
+
+    STATE_PKT_INJECT_1,
+    STATE_PKT_INJECT_2,
+    STATE_PKT_INJECT_3,
+    STATE_PKT_INJECT_4,
+    STATE_PKT_INJECT_5
+};
 
 // GPIO Defines
 #define GPIO_RESET 0
@@ -93,22 +134,22 @@ char nvs_vehicle_names[15][21] = {"No Data", "No Data", "No Data", "No Data", "N
 char control_key_user_names[256][17] = {0};
 
 // Rokenbok Control Logic Variables
-uint8_t timeouts[12] = {false, false, false, false, false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
-uint8_t enable_control[12] = {false, false, false, false, false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4 // FALSE = Normal, TRUE = SP Controlled
-//uint8_t control_keys[12] = {0x19, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x00, 0x00, 0x00, 0x00}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
-uint8_t control_keys[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
-uint8_t next_control_key = 2; // 0 = Unused, 1 = Physical Controller Plugged In
+enum SeriesState spi_fsm_state = STATE_IDLE;
 
-uint8_t next_dpi_index = 0;
-
-uint8_t selects[12] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
-
+uint8_t sp_status = 0;
 uint8_t share_mode = true;
 uint8_t is16sel_mode = true;
 uint8_t controller_timeout = 10;
 
-uint8_t enabled_controllers = 0b11111111; // V4|V3|V2|V1|P4|P3|P2|P1 // 0 = Enabled, 1 = Disabled
-uint8_t sp_a = 0x00;                      // V4|V3|V2|V1|P4|P3|P2|P1
+uint8_t selects[12] = {0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F};                       // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
+uint8_t timeouts[12] = {false, false, false, false, false, false, false, false, false, false, false, false};          // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
+uint8_t controller_enable[12] = {false, false, false, false, false, false, false, false, false, false, false, false}; // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4 // FALSE = Normal, TRUE = SP Controlled
+uint8_t control_keys[12] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};                  // V1, V2, V3, V4, P1, P2, P3, P4, D1, D2, D3, D4
+uint8_t next_control_key = 2;                                                                                         // 0 = Unused, 1 = Physical Controller Plugged In
+uint8_t next_dpi_index = 0;
+
+uint8_t controller_enable_bitmask = 0b11111111; // V4|V3|V2|V1|P4|P3|P2|P1 // 0 = Enabled, 1 = Disabled
+uint8_t sp_a = 0x00;                            // V4|V3|V2|V1|P4|P3|P2|P1
 uint8_t sp_b = 0x00;
 uint8_t sp_x = 0x00;
 uint8_t sp_y = 0x00;
@@ -133,11 +174,6 @@ uint8_t dpi_left[4] = {false, false, false, false};
 uint8_t dpi_right[4] = {false, false, false, false};
 uint8_t dpi_rt[4] = {false, false, false, false};
 
-uint8_t sp_status = 0;
-
-uint8_t spi_current_series = 0;
-uint8_t spi_series_count = 0;
-
 // Variables and Structs for WiFi Event Management
 EventGroupHandle_t wifi_event_group;
 uint8_t WIFI_CONNECTED_BIT = BIT0;
@@ -160,19 +196,26 @@ esp_timer_handle_t wifi_led_timer;
 
 /// @brief Converts all + to spaces and converts percent encoded values within a string.
 /// @param string String to process.
-void convert_percent_encoded(char *string) {
+void convert_percent_encoded(char *string)
+{
     char *src = string;
     char *dst = string;
-    while (*src) {
-        if (*src == '+') {
+    while (*src)
+    {
+        if (*src == '+')
+        {
             *dst++ = ' '; // Convert '+' to space
             src++;
-        } else if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2])) {
+        }
+        else if (src[0] == '%' && isxdigit((unsigned char)src[1]) && isxdigit((unsigned char)src[2]))
+        {
             int value;
             sscanf(src + 1, "%2x", &value); // Convert hex digits to a character
             *dst++ = (char)value;
             src += 3; // Move past "%XX"
-        } else {
+        }
+        else
+        {
             *dst++ = *src++; // Copy regular characters
         }
     }
@@ -206,7 +249,8 @@ bool contains(uint8_t array[], size_t size, uint8_t value)
 /// @brief HTTP Client Event Handler
 /// @param evt Event to handle.
 /// @return Error Code
-esp_err_t http_client_event_handler(esp_http_client_event_t *evt) {
+esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
+{
     // switch(evt->event_id) {
     //     case HTTP_EVENT_ERROR:
     //         ESP_LOGI("HTTP CLIENT", "HTTP_EVENT_ERROR");
@@ -261,10 +305,10 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             {
                 controller_index = i;
                 control_keys[i] = control_key;
-                enable_control[i] = true;
+                controller_enable[i] = true;
                 if (controller_index < 8) // Only Do This Step For Virtual and Physical Controllers
                 {
-                    enabled_controllers &= ~(0b00000001 << ((i + 4) % 8));
+                    controller_enable_bitmask &= ~(0b00000001 << ((i + 4) % 8));
                 }
                 // ESP_LOGI("SP", "CONTROL KEY %i NOW ASSIGNED TO CONTROLLER %i", control_key, i);
                 break;
@@ -274,7 +318,7 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
 
     if (controller_index == 255) // No Empty Spots Available
     {
-        //ESP_LOGI("SP", "NO AVAILABLE CONTROLLERS TO ASSIGN");
+        // ESP_LOGI("SP", "NO AVAILABLE CONTROLLERS TO ASSIGN");
         return 0xFF;
     }
 
@@ -289,19 +333,21 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             selects[controller_index] = requested_vehicle;
         }
         else
-        { 
+        {
             uint8_t new_vehicle = requested_vehicle;
             uint8_t max_value = (is16sel_mode ? 14 : 7);
-            
+
             if (new_vehicle == (selects[controller_index] + 1) % (max_value + 1))
             { // Detecting if the value was incremented.
-                while (contains(selects, 8, new_vehicle)) {
+                while (contains(selects, 8, new_vehicle))
+                {
                     new_vehicle = (new_vehicle + 1) % (max_value + 1);
                 }
             }
-            else //if (new_vehicle == (selects[controller_index] - 1 + max_value + 1) % (max_value + 1))
-            { // Detecting if the value was decremented.
-                while (contains(selects, 8, new_vehicle)) {
+            else // if (new_vehicle == (selects[controller_index] - 1 + max_value + 1) % (max_value + 1))
+            {    // Detecting if the value was decremented.
+                while (contains(selects, 8, new_vehicle))
+                {
                     new_vehicle = (new_vehicle == 0) ? max_value : (new_vehicle - 1);
                 }
             }
@@ -451,7 +497,7 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
         //     enable_control[6] = false;
         //     enable_control[7] = false;
 
-        //     enabled_controllers = 0xFF;
+        //     controller_enable_bitmask = 0xFF;
 
         //     selects[0] = 0x0F;
         //     selects[1] = 0x0F;
@@ -596,7 +642,7 @@ static uint8_t IRAM_ATTR handle_control_bytes(uint8_t control_code, uint8_t cont
             break;
         }
     }
-    
+
     if (select_changed)
     {
         return selects[controller_index];
@@ -752,7 +798,7 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             send_pkt.payload = (uint8_t *)combined_string;
             httpd_ws_send_frame(req, &send_pkt);
         }
-        else if (ws_pkt.payload[0] == 0xC3  && ws_pkt.len > 1) // Received User Name
+        else if (ws_pkt.payload[0] == 0xC3 && ws_pkt.len > 1) // Received User Name
         {
             if (ws_pkt.payload[1] > 1)
             {
@@ -777,10 +823,10 @@ static esp_err_t websocket_handler(httpd_req_t *req)
             char combined_string[total_length + 1];
 
             snprintf(combined_string, sizeof(combined_string), "X=%s=%s=%s=%s=%s=%s=%s=%s=%s=%s=%s=%s=",
-                    control_key_user_names[control_keys[0]], control_key_user_names[control_keys[1]], control_key_user_names[control_keys[2]],
-                    control_key_user_names[control_keys[3]], control_key_user_names[control_keys[4]], control_key_user_names[control_keys[5]],
-                    control_key_user_names[control_keys[6]], control_key_user_names[control_keys[7]], control_key_user_names[control_keys[8]],
-                    control_key_user_names[control_keys[9]], control_key_user_names[control_keys[10]], control_key_user_names[control_keys[11]]);
+                     control_key_user_names[control_keys[0]], control_key_user_names[control_keys[1]], control_key_user_names[control_keys[2]],
+                     control_key_user_names[control_keys[3]], control_key_user_names[control_keys[4]], control_key_user_names[control_keys[5]],
+                     control_key_user_names[control_keys[6]], control_key_user_names[control_keys[7]], control_key_user_names[control_keys[8]],
+                     control_key_user_names[control_keys[9]], control_key_user_names[control_keys[10]], control_key_user_names[control_keys[11]]);
             combined_string[0] = 0xC4;
 
             httpd_ws_frame_t send_pkt;
@@ -965,7 +1011,7 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
+    // ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
     char rec_share_mode[6];
@@ -1152,7 +1198,8 @@ static esp_err_t admin_form_handler(httpd_req_t *req)
     }
 
     convert_percent_encoded(rec_admin_password);
-    for (uint8_t i = 0; i < 15; i++) {
+    for (uint8_t i = 0; i < 15; i++)
+    {
         convert_percent_encoded(rec_names[i]);
     }
 
@@ -1273,7 +1320,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
+    // ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
 
@@ -1298,7 +1345,7 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
     if (strcmp(rec_admin_password, nvs_admin_password) == 0)
     {
         esp_err_t err;
-        esp_ota_handle_t update_handle = 0 ;
+        esp_ota_handle_t update_handle = 0;
         const esp_partition_t *update_partition = NULL;
 
         ESP_LOGI("OTA", "Starting OTA Update");
@@ -1311,7 +1358,8 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
 
         esp_http_client_handle_t client = esp_http_client_init(&config);
         err = esp_http_client_open(client, 0);
-        if (err != ESP_OK) {
+        if (err != ESP_OK)
+        {
             ESP_LOGE("HTTP", "Failed to open HTTP connection: %s", esp_err_to_name(err));
             esp_http_client_cleanup(client);
             return err;
@@ -1322,7 +1370,8 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         update_partition = esp_ota_get_next_update_partition(NULL);
 
         err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
-        if (err != ESP_OK) {
+        if (err != ESP_OK)
+        {
             ESP_LOGE("OTA", "esp_ota_begin failed, error=%s", esp_err_to_name(err));
             esp_http_client_cleanup(client);
             return err;
@@ -1331,19 +1380,22 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
         int binary_file_len = 0;
         int data_read;
         char ota_write_data[512];
-        while ((data_read = esp_http_client_read(client, ota_write_data, sizeof(ota_write_data))) > 0) {
+        while ((data_read = esp_http_client_read(client, ota_write_data, sizeof(ota_write_data))) > 0)
+        {
             err = esp_ota_write(update_handle, (const void *)ota_write_data, data_read);
-            if (err != ESP_OK) {
+            if (err != ESP_OK)
+            {
                 ESP_LOGE("OTA", "Error: esp_ota_write failed! err=0x%x", err);
                 esp_http_client_cleanup(client);
                 esp_ota_end(update_handle);
                 return err;
             }
             binary_file_len += data_read;
-            //ESP_LOGI("OTA", "Written image length %d", binary_file_len);
+            // ESP_LOGI("OTA", "Written image length %d", binary_file_len);
         }
 
-        if (data_read < 0) {
+        if (data_read < 0)
+        {
             ESP_LOGE("HTTP", "Error: SSL data read error");
             esp_http_client_cleanup(client);
             esp_ota_end(update_handle);
@@ -1352,13 +1404,15 @@ static esp_err_t ota_firmware_update_handler(httpd_req_t *req)
 
         ESP_LOGI("OTA", "Total Write binary data length: %d", binary_file_len);
 
-        if (esp_ota_end(update_handle) != ESP_OK) {
+        if (esp_ota_end(update_handle) != ESP_OK)
+        {
             ESP_LOGE("OTA", "Error: esp_ota_end failed! err=0x%x", err);
             return err;
         }
 
         err = esp_ota_set_boot_partition(update_partition);
-        if (err != ESP_OK) {
+        if (err != ESP_OK)
+        {
             ESP_LOGE("OTA", "esp_ota_set_boot_partition failed! err=0x%x", err);
             return err;
         }
@@ -1428,14 +1482,14 @@ static esp_err_t init_form_handler(httpd_req_t *req)
     }
 
     buf[req->content_len] = '\0';
-    //ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
+    // ESP_LOGI("HTML POST", "Received form data: |%s|", buf);
 
     char rec_admin_password[96 + 1];
-    char rec_ssid[MAX_WIFI_SSID_LEN*3 + 1]; // Times 3 allows for percent encoding.
-    char rec_password[MAX_WIFI_PASSWORD_LEN*3 + 1]; // Times 3 allows for percent encoding.
-    uint8_t rec_gateway[4] = {0}; // Array to store each part of the Gateway IP
-    uint8_t rec_static[4] = {0};  // Array to store each part of the Static IP
-    uint8_t rec_netmask[4] = {0}; // Array to store each part of the Net Mask IP
+    char rec_ssid[MAX_WIFI_SSID_LEN * 3 + 1];         // Times 3 allows for percent encoding.
+    char rec_password[MAX_WIFI_PASSWORD_LEN * 3 + 1]; // Times 3 allows for percent encoding.
+    uint8_t rec_gateway[4] = {0};                     // Array to store each part of the Gateway IP
+    uint8_t rec_static[4] = {0};                      // Array to store each part of the Static IP
+    uint8_t rec_netmask[4] = {0};                     // Array to store each part of the Net Mask IP
 
     rec_admin_password[0] = '\0';
     rec_ssid[0] = '\0';
@@ -1594,7 +1648,7 @@ esp_err_t update_post_handler(httpd_req_t *req)
         {
             continue;
 
-        // Serious Error: Abort OTA
+            // Serious Error: Abort OTA
         }
         else if (recv_len <= 0)
         {
@@ -1646,7 +1700,7 @@ static httpd_handle_t start_http_webserver(uint8_t page_version)
     config.stack_size = 8192;
 
     // Start the httpd server
-    //ESP_LOGI("WEBSERVER", "Starting server on port: '%d'", config.server_port);
+    // ESP_LOGI("WEBSERVER", "Starting server on port: '%d'", config.server_port);
     if (httpd_start(&server, &config) == ESP_OK)
     {
         if (page_version == 0)
@@ -1720,425 +1774,407 @@ static void IRAM_ATTR spi_task(void *arg)
 
         spi_slave_transmit(SPI2_HOST, &t, portMAX_DELAY);
 
-        // NO SERIES
-        if (spi_current_series == NO_SERIES)
+        // STATE MACHINE IDLE STATE
+        switch (spi_fsm_state)
         {
-            if (recv_byte == PRESYNC)
+        case STATE_IDLE:
+            switch (recv_byte)
             {
-                spi_current_series = SYNC_SERIES;
-                spi_series_count = 1;
+            case PRESYNC: // Receive: PRESYNC // Send: SLAVE_SYNC
+            {
+                spi_fsm_state = STATE_SYNC_1;
                 send_byte = SLAVE_SYNC;
+                break;
             }
-            else if (recv_byte == EDIT_TPADS)
+            case EDIT_TPADS: // Receive: EDIT_TPADS // Send: VERIFY_EDIT
             {
-                spi_current_series = EDIT_TPADS_SERIES;
-                spi_series_count = 1;
+                spi_fsm_state = STATE_EDIT_TPADS_1;
                 send_byte = VERIFY_EDIT;
 
-                // RESET SYNC TIMER
+                // RESET SYNC TIMER (EDIT_TPADS Only Received When Synced)
                 sp_status = 1;
                 gpio_set_level(GPIO_SP_LED, 1);
                 esp_timer_restart(sync_timer, 0.1 * 1000000); // 0.1 Second Interval
+                break;
             }
-            else if (recv_byte == EDIT_SELECT)
+            case EDIT_SELECT: // Receive: EDIT_SELECT // Send: VERIFY_EDIT
             {
-                spi_current_series = EDIT_SELECT_SERIES;
-                spi_series_count = 1;
+                spi_fsm_state = STATE_EDIT_SELECT_1;
                 send_byte = VERIFY_EDIT;
+                break;
             }
-            else if (recv_byte == MASTER_ASK_INS)
+            case MASTER_ASK_INS: // Receive: MASTER_ASK_INS // Send: First Half of DPI Packet (SEL3, SEL2, SEL1, SEL0, UP, DOWN, RIGHT, LEFT)
             {
-                spi_current_series = PKT_INJECT_SERIES;
-                spi_series_count = 1;
-
+                spi_fsm_state = STATE_PKT_INJECT_1;
                 // Generate First Half of DPI Packet (SEL3, SEL2, SEL1, SEL0, UP, DOWN, RIGHT, LEFT)
                 uint8_t original_index = next_dpi_index;
                 uint8_t valid_found = false;
-                do {
+                do
+                {
                     next_dpi_index = (next_dpi_index + 1) % 4;
 
                     // A DPI should only be broadcast if it has a selection and isn't the same as another V/P/D controller selection.
-                    if (selects[next_dpi_index + 8] != 0x0F && !contains(selects, 8, selects[next_dpi_index + 8])) {
+                    if (selects[next_dpi_index + 8] != 0x0F && !contains(selects, 8, selects[next_dpi_index + 8]))
+                    {
                         valid_found = true;
-                        break;  // Found the valid next index
+                        break; // Found the valid next index
                     }
 
-                } while (next_dpi_index != original_index);  // Stop if we've wrapped around back to the original index
+                } while (next_dpi_index != original_index); // Stop if we've wrapped around back to the original index
 
-                if (valid_found) { // Only generate a send_byte if a valid controller was found
+                if (valid_found)
+                { // Only generate a send_byte if a valid controller was found
                     send_byte = (selects[next_dpi_index + 8] + 1) << 4;
-                    if (dpi_up[next_dpi_index]) {
+                    if (dpi_up[next_dpi_index])
+                    {
                         send_byte |= 0b00001000;
                     }
-                    if (dpi_down[next_dpi_index]) {
+                    if (dpi_down[next_dpi_index])
+                    {
                         send_byte |= 0b00000100;
                     }
-                    if (dpi_right[next_dpi_index]) {
+                    if (dpi_right[next_dpi_index])
+                    {
                         send_byte |= 0b00000010;
                     }
-                    if (dpi_left[next_dpi_index]) {
+                    if (dpi_left[next_dpi_index])
+                    {
                         send_byte |= 0b00000001;
                     }
-                } else {
+                }
+                else
+                {
                     send_byte = 0b00000000; // Send NULL Upper Half
                 }
+                break;
             }
-            else
+            default:
             {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
+                spi_fsm_state = STATE_IDLE;
                 send_byte = NULL_CMD;
+                break;
             }
-        }
-        // SYNC SERIES
-        else if (spi_current_series == SYNC_SERIES)
-        {
-            if (spi_series_count == 1)
-            {
-                spi_series_count = 2;
-                send_byte = ENABLE_ATTRIB_BYTE;
-                for (uint8_t i = 8; i < 12; i++) { // Only enable DPI if needed.
-                    if (selects[i] != 0x0F) {
-                        send_byte = PACKET_INJECT_ATTRIB_BYTE;
-                        break;
-                    }
-                }
             }
-            else if (spi_series_count == 2)
-            {
-                spi_series_count = 3;
-                send_byte = NO_SEL_TIMEOUT;
-            }
-            else if (spi_series_count == 3)
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
-                send_byte = NULL_CMD;
-            }
-            else
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
-                send_byte = NULL_CMD;
-            }
-        }
-        // EDIT TPADS SERIES
-        else if (spi_current_series == EDIT_TPADS_SERIES)
-        {
-            if (spi_series_count == 1)
-            {
-                spi_series_count = 2; // Select Button
-                // spi_rec_tpads[0] = recv_byte;
-                send_byte = recv_byte; //(recv_byte & enabled_controllers) | sp_sel_button;
-            }
-            else if (spi_series_count == 2)
-            {
-                spi_series_count = 3; // Left Trigger (Last Select)
-                // spi_rec_tpads[1] = recv_byte;
-                send_byte = recv_byte; //(recv_byte & enabled_controllers) | sp_lt;
-            }
-            else if (spi_series_count == 3)
-            {
-                spi_series_count = 4; // Sharing Mode (1 = Allow Sharing)
-                // spi_rec_tpads[2] = recv_byte;
-                if (share_mode) {
-                    send_byte = recv_byte | (~enabled_controllers); // Enable Sharing For Virtual Controllers
-                } else {
-                    send_byte = recv_byte & enabled_controllers; // Disable Sharing For Virtual Controllers
-                }
-                //send_byte = recv_byte; //(recv_byte & enabled_controllers) | sp_share;
-            }
-            else if (spi_series_count == 4)
-            {
-                spi_series_count = 5; // RESERVED (0 when plugged in, 1 when not)
-                // spi_rec_tpads[3] = recv_byte;
-                send_byte = recv_byte;
+            break;
 
-                for (uint8_t i = 4; i < 8; i++)
-                { // Check if P1-P4 are plugged in.
-                    uint8_t bitwise_index = (i + 4) % 8;
-                    if (!(recv_byte & (1 << bitwise_index)))
-                    { // If it is plugged in...
-                        if (control_keys[i] != 1)
-                        { // And it is not currently tracked as physical controlled...
-                            // Clear out virtual controller data and free for use.
-                            control_keys[i] = 1;
-                            selects[i] = 0x0F;
-                            sp_a &= ~(0b00000001 << bitwise_index);
-                            sp_b &= ~(0b00000001 << bitwise_index);
-                            sp_x &= ~(0b00000001 << bitwise_index);
-                            sp_y &= ~(0b00000001 << bitwise_index);
-                            sp_up &= ~(0b00000001 << bitwise_index);
-                            sp_down &= ~(0b00000001 << bitwise_index);
-                            sp_left &= ~(0b00000001 << bitwise_index);
-                            sp_right &= ~(0b00000001 << bitwise_index);
-                            sp_rt &= ~(0b00000001 << bitwise_index);
-                            sp_priority_byte |= (0b00000001 << bitwise_index);
-                            enable_control[i] = false;
-                            enabled_controllers |= (0b00000001 << bitwise_index); // THIS MAY BE BORKED????
-                        }
-                        timeouts[i] = true;
-                    }
-                    else
-                    { // If it is not plugged in...
-                        if (control_keys[i] == 1)
-                        { // And if it was being used...
-                            // Free it back up for use.
-                            control_keys[i] = 0;
-                            selects[i] = 0x0F;
-                            sp_a &= ~(0b00000001 << bitwise_index);
-                            sp_b &= ~(0b00000001 << bitwise_index);
-                            sp_x &= ~(0b00000001 << bitwise_index);
-                            sp_y &= ~(0b00000001 << bitwise_index);
-                            sp_up &= ~(0b00000001 << bitwise_index);
-                            sp_down &= ~(0b00000001 << bitwise_index);
-                            sp_left &= ~(0b00000001 << bitwise_index);
-                            sp_right &= ~(0b00000001 << bitwise_index);
-                            sp_rt &= ~(0b00000001 << bitwise_index);
-                            sp_priority_byte |= (0b00000001 << bitwise_index);
-                            timeouts[i] = false;
-                        }
-                    }
-                }
-            }
-            else if (spi_series_count == 5)
-            {
-                spi_series_count = 6; // IS16SEL? (0 when plugged in, 1 when not)
-                // spi_rec_tpads[4] = recv_byte;
-                if (is16sel_mode) {
-                    send_byte = 0xFF; //(recv_byte & enabled_controllers) | sp_is16SEL;
-                } else {
-                    send_byte = 0x00;
-                }
-                
-            }
-            else if (spi_series_count == 6)
-            {
-                spi_series_count = 7; // D Pad Up
-                // spi_rec_tpads[5] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_up;
-            }
-            else if (spi_series_count == 7)
-            {
-                spi_series_count = 8; // D Pad Down
-                // spi_rec_tpads[6] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_down;
-            }
-            else if (spi_series_count == 8)
-            {
-                spi_series_count = 9; // D Pad Right
-                // spi_rec_tpads[7] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_right;
-            }
-            else if (spi_series_count == 9)
-            {
-                spi_series_count = 10; // D Pad Left
-                // spi_rec_tpads[8] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_left;
-            }
-            else if (spi_series_count == 10)
-            {
-                spi_series_count = 11; // A
-                // spi_rec_tpads[9] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | (~sp_rt & sp_a);
-            }
-            else if (spi_series_count == 11)
-            {
-                spi_series_count = 12; // B
-                // spi_rec_tpads[10] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | (~sp_rt & sp_b);
-            }
-            else if (spi_series_count == 12)
-            {
-                spi_series_count = 13; // X
-                // spi_rec_tpads[11] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_x;
-            }
-            else if (spi_series_count == 13)
-            {
-                spi_series_count = 14; // Y
-                // spi_rec_tpads[12] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_y;
-            }
-            else if (spi_series_count == 14)
-            {
-                spi_series_count = 15; // RESERVED FOR A' (RT+A) (0 when plugged in, 1 when not)
-                // spi_rec_tpads[13] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | (sp_rt & sp_a);
-            }
-            else if (spi_series_count == 15)
-            {
-                spi_series_count = 16; // RESERVED FOR B' (RT+B) (0 when plugged in, 1 when not)
-                // spi_rec_tpads[14] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | (sp_rt & sp_b);
-            }
-            else if (spi_series_count == 16)
-            {
-                spi_series_count = 17; // Right Trigger (Slow)
-                // spi_rec_tpads[15] = recv_byte;
-                send_byte = (recv_byte & enabled_controllers) | sp_rt;
-            }
-            else if (spi_series_count == 17)
-            {
-                spi_series_count = 18; // Spare (0 regardless if plugged in or not)
-                // spi_rec_tpads[16] = recv_byte;
-                send_byte = 0x00; // recv_byte;
-            }
-            else if (spi_series_count == 18)
-            {
-                spi_series_count = 19; // Priority Byte
-                // spi_rec_tpads[17] = recv_byte;
-                send_byte = recv_byte | sp_priority_byte;
-                sp_priority_byte = 0x00;
-            }
-            else if (spi_series_count == 19)
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
-                send_byte = NULL_CMD;
-            }
-            else
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
-                send_byte = NULL_CMD;
-            }
-        }
-        // EDIT SELECT SERIES
-        else if (spi_current_series == EDIT_SELECT_SERIES)
-        {
-            if (spi_series_count == 1)
-            {
-                spi_series_count = 2; // P1 Select
-                // spi_rec_select[0] = recv_byte;
-                if (enable_control[4])
+        // STATE MACHINE SYNC STATES
+        case STATE_SYNC_1: // Receive: MASTER_SYNC // Send: Attribute Byte
+            spi_fsm_state = STATE_SYNC_2;
+            send_byte = ENABLE_ATTRIB_BYTE;
+            for (uint8_t i = 8; i < 12; i++)
+            { // Only enable DPI if needed.
+                if (selects[i] != 0x0F)
                 {
-                    send_byte = selects[4];
-                }
-                else
-                {
-                    selects[4] = recv_byte;
-                    send_byte = recv_byte;
+                    send_byte = PACKET_INJECT_ATTRIB_BYTE;
+                    break;
                 }
             }
-            else if (spi_series_count == 2)
-            {
-                spi_series_count = 3; // P2 Select
-                // spi_rec_select[1] = recv_byte;
-                if (enable_control[5])
-                {
-                    send_byte = selects[5];
-                }
-                else
-                {
-                    selects[5] = recv_byte;
-                    send_byte = recv_byte;
-                }
-            }
-            else if (spi_series_count == 3)
-            {
-                spi_series_count = 4; // P3 Select
-                // spi_rec_select[2] = recv_byte;
-                if (enable_control[6])
-                {
-                    send_byte = selects[6];
-                }
-                else
-                {
-                    selects[6] = recv_byte;
-                    send_byte = recv_byte;
-                }
-            }
-            else if (spi_series_count == 4)
-            {
-                spi_series_count = 5; // P4 Select
-                // spi_rec_select[3] = recv_byte;
-                if (enable_control[7])
-                {
-                    send_byte = selects[7];
-                }
-                else
-                {
-                    selects[7] = recv_byte;
-                    send_byte = recv_byte;
-                }
-            }
-            else if (spi_series_count == 5)
-            {
-                spi_series_count = 6; // V1 Select
-                // spi_rec_select[4] = recv_byte;
-                send_byte = selects[0];
-            }
-            else if (spi_series_count == 6)
-            {
-                spi_series_count = 7; // V2 Select
-                // spi_rec_select[5] = recv_byte;
-                send_byte = selects[1];
-            }
-            else if (spi_series_count == 7)
-            {
-                spi_series_count = 8; // V3 Select
-                // spi_rec_select[6] = recv_byte;
-                send_byte = selects[2];
-            }
-            else if (spi_series_count == 8)
-            {
-                spi_series_count = 9; // V4 Select
-                // spi_rec_select[7] = recv_byte;
-                send_byte = selects[3];
-            }
-            else if (spi_series_count == 9)
-            {
-                spi_series_count = 10; // Timer Value (Counts Up From 0-15 and Repeats)
-                send_byte = recv_byte;
-            }
-            else if (spi_series_count == 10)
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
-                send_byte = SLAVE_WAIT_INS; // Ready to Insert Packet
-            }
-            else
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
-                send_byte = NULL_CMD;
-            }
-        }
-        // PKT INJECT SERIES
-        else if (spi_current_series == PKT_INJECT_SERIES)
-        {
-            if (spi_series_count == 1)
-            {
-                spi_current_series = NO_SERIES;
-                spi_series_count = 0;
+            break;
 
-                // Generate First Half of DPI Packet (A, B, X, Y, A', B', RT, ?)
-                send_byte = 0b00000000;
+        case STATE_SYNC_2: // Receive: READ_ATTRIB // Send: No Timeout Settings
+            spi_fsm_state = STATE_SYNC_3;
+            send_byte = NO_SEL_TIMEOUT;
+            break;
 
-                if (dpi_a[next_dpi_index]) {
-                    send_byte |= 0b10000000;
-                }
-                if (dpi_b[next_dpi_index]) {
-                    send_byte |= 0b01000000;
-                }
-                if (dpi_x[next_dpi_index]) {
-                    send_byte |= 0b00100000;
-                }
-                if (dpi_y[next_dpi_index]) {
-                    send_byte |= 0b00010000;
-                }
-                if (dpi_rt[next_dpi_index]) {
-                    send_byte |= 0b00000010;
-                }
-            }
-        }
-        // CATCH ALL
-        else
-        {
-            spi_current_series = NO_SERIES;
-            spi_series_count = 0;
+        case STATE_SYNC_3: // Receive: READ_NO_SEL_TIMEOUT // Send: NULL_CMD
+            spi_fsm_state = STATE_IDLE;
             send_byte = NULL_CMD;
+            break;
+
+        // STATE MACHINE EDIT TPADS STATES
+        case STATE_EDIT_TPADS_1: // Receive: Select // Send: Select
+            spi_fsm_state = STATE_EDIT_TPADS_2;
+            send_byte = recv_byte; // Don't modify received byte.
+            break;
+
+        case STATE_EDIT_TPADS_2: // Receive: Left Trigger // Send: Left Trigger (Last Select)
+            spi_fsm_state = STATE_EDIT_TPADS_3;
+            send_byte = recv_byte; // Don't modify received byte.
+            break;
+
+        case STATE_EDIT_TPADS_3: // Receive: Sharing Mode // Send: Sharing Mode (0 = No Sharing, 1 = Allow Sharing)
+            spi_fsm_state = STATE_EDIT_TPADS_4;
+            if (share_mode)
+            {
+                send_byte = recv_byte | (~controller_enable_bitmask); // Enable Sharing For Virtual Controllers
+            }
+            else
+            {
+                send_byte = recv_byte & controller_enable_bitmask; // Disable Sharing For Virtual Controllers
+            }
+            break;
+
+        case STATE_EDIT_TPADS_4: // Receive: RESERVED // Send: RESERVED (0 when plugged in, 1 when not)
+            spi_fsm_state = STATE_EDIT_TPADS_5;
+            send_byte = recv_byte;
+
+            for (uint8_t i = 4; i < 8; i++)
+            { // Check if P1-P4 are plugged in.
+                uint8_t bitwise_index = (i + 4) % 8;
+                if (!(recv_byte & (1 << bitwise_index)))
+                { // If it is plugged in...
+                    if (control_keys[i] != 1)
+                    { // And it is not currently tracked as physical controlled...
+                        // Clear out virtual controller data and free for use.
+                        control_keys[i] = 1;
+                        selects[i] = 0x0F;
+                        sp_a &= ~(0b00000001 << bitwise_index);
+                        sp_b &= ~(0b00000001 << bitwise_index);
+                        sp_x &= ~(0b00000001 << bitwise_index);
+                        sp_y &= ~(0b00000001 << bitwise_index);
+                        sp_up &= ~(0b00000001 << bitwise_index);
+                        sp_down &= ~(0b00000001 << bitwise_index);
+                        sp_left &= ~(0b00000001 << bitwise_index);
+                        sp_right &= ~(0b00000001 << bitwise_index);
+                        sp_rt &= ~(0b00000001 << bitwise_index);
+                        sp_priority_byte |= (0b00000001 << bitwise_index);
+                        controller_enable[i] = false;
+                        controller_enable_bitmask |= (0b00000001 << bitwise_index); // THIS MAY BE BORKED????
+                    }
+                    timeouts[i] = true;
+                }
+                else
+                { // If it is not plugged in...
+                    if (control_keys[i] == 1)
+                    { // And if it was being used...
+                        // Free it back up for use.
+                        control_keys[i] = 0;
+                        selects[i] = 0x0F;
+                        sp_a &= ~(0b00000001 << bitwise_index);
+                        sp_b &= ~(0b00000001 << bitwise_index);
+                        sp_x &= ~(0b00000001 << bitwise_index);
+                        sp_y &= ~(0b00000001 << bitwise_index);
+                        sp_up &= ~(0b00000001 << bitwise_index);
+                        sp_down &= ~(0b00000001 << bitwise_index);
+                        sp_left &= ~(0b00000001 << bitwise_index);
+                        sp_right &= ~(0b00000001 << bitwise_index);
+                        sp_rt &= ~(0b00000001 << bitwise_index);
+                        sp_priority_byte |= (0b00000001 << bitwise_index);
+                        timeouts[i] = false;
+                    }
+                }
+            }
+            break;
+
+        case STATE_EDIT_TPADS_5: // Receive: IS16SEL // Send: IS16SEL (0 = 8 Selections, 1 = 16 Selections) (0 when plugged in, 1 when not)
+            spi_fsm_state = STATE_EDIT_TPADS_6;
+            if (is16sel_mode)
+            {
+                send_byte = 0xFF;
+            }
+            else
+            {
+                send_byte = 0x00;
+            }
+            break;
+
+        case STATE_EDIT_TPADS_6: // Receive: D Pad Up // Send: D Pad Up
+            spi_fsm_state = STATE_EDIT_TPADS_7;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_up;
+            break;
+
+        case STATE_EDIT_TPADS_7: // Receive: D Pad Down // Send: D Pad Down
+            spi_fsm_state = STATE_EDIT_TPADS_8;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_down;
+            break;
+
+        case STATE_EDIT_TPADS_8: // Receive: D Pad Right // Send: D Pad Right
+            spi_fsm_state = STATE_EDIT_TPADS_9;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_right;
+            break;
+
+        case STATE_EDIT_TPADS_9: // Receive: D Pad Left // Send: D Pad Left
+            spi_fsm_state = STATE_EDIT_TPADS_10;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_left;
+            break;
+
+        case STATE_EDIT_TPADS_10: // Receive: A Button // Send: A Button
+            spi_fsm_state = STATE_EDIT_TPADS_11;
+            send_byte = (recv_byte & controller_enable_bitmask) | (~sp_rt & sp_a);
+            break;
+
+        case STATE_EDIT_TPADS_11: // Receive: B Button // Send: B Button
+            spi_fsm_state = STATE_EDIT_TPADS_12;
+            send_byte = (recv_byte & controller_enable_bitmask) | (~sp_rt & sp_b);
+            break;
+
+        case STATE_EDIT_TPADS_12: // Receive: X Button // Send: X Button
+            spi_fsm_state = STATE_EDIT_TPADS_13;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_x;
+            break;
+
+        case STATE_EDIT_TPADS_13: // Receive: Y Button // Send: Y Button
+            spi_fsm_state = STATE_EDIT_TPADS_14;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_y;
+            break;
+
+        case STATE_EDIT_TPADS_14: // Receive: RESERVED (A' / RT+A) // Send: RESERVED (A' / RT+A) (0 when plugged in, 1 when not)
+            spi_fsm_state = STATE_EDIT_TPADS_15;
+            send_byte = (recv_byte & controller_enable_bitmask) | (sp_rt & sp_a);
+            break;
+
+        case STATE_EDIT_TPADS_15: // Receive: RESERVED (B' / RT+B) // Send: RESERVED (B' / RT+B) (0 when plugged in, 1 when not)
+            spi_fsm_state = STATE_EDIT_TPADS_16;
+            send_byte = (recv_byte & controller_enable_bitmask) | (sp_rt & sp_b);
+            break;
+
+        case STATE_EDIT_TPADS_16: // Receive: Right Trigger // Send: Right Trigger (Slow)
+            spi_fsm_state = STATE_EDIT_TPADS_17;
+            send_byte = (recv_byte & controller_enable_bitmask) | sp_rt;
+            break;
+
+        case STATE_EDIT_TPADS_17: // Receive: SPARE // Send: SPARE (0 regardless if plugged in or not)
+            spi_fsm_state = STATE_EDIT_TPADS_18;
+            send_byte = 0x00;
+            break;
+
+        case STATE_EDIT_TPADS_18: // Receive: Priority Byte // Send: Priority Byte
+            spi_fsm_state = STATE_EDIT_TPADS_19;
+            send_byte = recv_byte | sp_priority_byte; // Flag bits modified by Smart Port logic.
+            sp_priority_byte = 0x00;                  // Reset the priority byte.
+            break;
+
+        case STATE_EDIT_TPADS_19: // Receive: EDIT_END // Send: NULL_CMD
+            spi_fsm_state = STATE_IDLE;
+            send_byte = NULL_CMD;
+            break;
+
+        // STATE MACHIE EDIT SELECT STATES
+        case STATE_EDIT_SELECT_1: // Receive: P1 Select // Send: P1 Select
+            spi_fsm_state = STATE_EDIT_SELECT_2;
+            if (controller_enable[4])
+            {
+                send_byte = selects[4];
+            }
+            else
+            {
+                selects[4] = recv_byte;
+                send_byte = recv_byte;
+            }
+            break;
+
+        case STATE_EDIT_SELECT_2: // Receive: P2 Select // Send: P2 Select
+            spi_fsm_state = STATE_EDIT_SELECT_3;
+            if (controller_enable[5])
+            {
+                send_byte = selects[5];
+            }
+            else
+            {
+                selects[5] = recv_byte;
+                send_byte = recv_byte;
+            }
+            break;
+
+        case STATE_EDIT_SELECT_3: // Receive: P3 Select // Send: P3 Select
+            spi_fsm_state = STATE_EDIT_SELECT_4;
+            if (controller_enable[6])
+            {
+                send_byte = selects[6];
+            }
+            else
+            {
+                selects[6] = recv_byte;
+                send_byte = recv_byte;
+            }
+            break;
+
+        case STATE_EDIT_SELECT_4: // Receive: P4 Select // Send: P4 Select
+            spi_fsm_state = STATE_EDIT_SELECT_5;
+            if (controller_enable[7])
+            {
+                send_byte = selects[7];
+            }
+            else
+            {
+                selects[7] = recv_byte;
+                send_byte = recv_byte;
+            }
+            break;
+
+        case STATE_EDIT_SELECT_5: // Receive: V1 Select // Send: V1 Select
+            spi_fsm_state = STATE_EDIT_SELECT_6;
+            send_byte = selects[0];
+            break;
+
+        case STATE_EDIT_SELECT_6: // Receive: V2 Select // Send: V2 Select
+            spi_fsm_state = STATE_EDIT_SELECT_7;
+            send_byte = selects[1];
+            break;
+
+        case STATE_EDIT_SELECT_7: // Receive: V3 Select // Send: V3 Select
+            spi_fsm_state = STATE_EDIT_SELECT_8;
+            send_byte = selects[2];
+            break;
+
+        case STATE_EDIT_SELECT_8: // Receive: V4 Select // Send: V4 Select
+            spi_fsm_state = STATE_EDIT_SELECT_9;
+            send_byte = selects[3];
+            break;
+
+        case STATE_EDIT_SELECT_9: // Receive: Timer Value // Send: Doesn't Matter (Echo or 0x00 is Okay)
+            spi_fsm_state = STATE_EDIT_SELECT_10;
+            send_byte = recv_byte; // Timer Value (Counts Up From 0-15 and Repeats)
+            break;
+
+        case STATE_EDIT_SELECT_10: // Receive: EDIT_END // Send: SLAVE_WANT_INS
+            spi_fsm_state = STATE_IDLE;
+            send_byte = SLAVE_WANT_INS; // Ready to Insert Packet // TODO: I think you could send a NULL_CMD here.
+            break;
+
+        // STATE MACHINE PKT INJECT STATE
+        case STATE_PKT_INJECT_1: // Receive: READ_REPLY // Send: Second Half of DPI Packet (A, B, X, Y, A', B', RT, ?)
+            spi_fsm_state = STATE_PKT_INJECT_2;
+            // Generate First Half of DPI Packet (A, B, X, Y, A', B', RT, ?)
+            send_byte = 0b00000000;
+
+            if (dpi_a[next_dpi_index])
+            {
+                send_byte |= 0b10000000;
+            }
+            if (dpi_b[next_dpi_index])
+            {
+                send_byte |= 0b01000000;
+            }
+            if (dpi_x[next_dpi_index])
+            {
+                send_byte |= 0b00100000;
+            }
+            if (dpi_y[next_dpi_index])
+            {
+                send_byte |= 0b00010000;
+            }
+            if (dpi_rt[next_dpi_index])
+            {
+                send_byte |= 0b00000010;
+            }
+            break;
+
+        case STATE_PKT_INJECT_2: // Receive: READ_REPLY // Send: NULL
+            spi_fsm_state = STATE_PKT_INJECT_3;
+            send_byte = NULL_CMD;
+            break;
+
+        case STATE_PKT_INJECT_3: // Receive: HAVE_RADIO_PKT // Send: NULL
+            spi_fsm_state = STATE_PKT_INJECT_4;
+            send_byte = NULL_CMD;
+            break;
+
+        case STATE_PKT_INJECT_4: // Receive: Readback of First Half of DPI Packet // Send: NULL
+            spi_fsm_state = STATE_PKT_INJECT_5;
+            send_byte = NULL_CMD;
+            break;
+
+        case STATE_PKT_INJECT_5: // Receive: Readback of Second Half of DPI Packet // Send: NULL
+            spi_fsm_state = STATE_IDLE;
+            send_byte = NULL_CMD;
+            break;
+
+        // CATCH ALL
+        default:
+            spi_fsm_state = STATE_IDLE;
+            send_byte = NULL_CMD;
+            break;
         }
     }
 }
@@ -2202,12 +2238,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     if (event_id == WIFI_EVENT_STA_START)
     {
         esp_timer_start_periodic(wifi_led_timer, 0.25 * 1000000); // 0.25 Second Interval
-        //ESP_LOGI("WIFI", "WiFi station started. Connecting to the saved SSID.");
+        // ESP_LOGI("WIFI", "WiFi station started. Connecting to the saved SSID.");
         esp_wifi_connect();
     }
     else if (event_id == WIFI_EVENT_STA_CONNECTED)
     {
-        //ESP_LOGI("WIFI", "WiFi station connected to saved credentials.");
+        // ESP_LOGI("WIFI", "WiFi station connected to saved credentials.");
     }
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
@@ -2491,12 +2527,12 @@ static void wifi_init_from_nvs(void)
                         {
                             // Connect to WiFi using retrieved information including IP arrays.
                             ESP_LOGI("NVS", "WiFi credentials found in NVS. Connecting to WiFi as a station.");
-                            //ESP_LOGI("NVS", "Retrieved Admin Password: %s", nvs_admin_password);
-                            //ESP_LOGI("NVS", "Retrieved SSID: %s", nvs_ssid);
-                            //ESP_LOGI("NVS", "Retrieved Password: %s", nvs_password);
+                            // ESP_LOGI("NVS", "Retrieved Admin Password: %s", nvs_admin_password);
+                            // ESP_LOGI("NVS", "Retrieved SSID: %s", nvs_ssid);
+                            // ESP_LOGI("NVS", "Retrieved Password: %s", nvs_password);
                             if ((nvs_password[0] == 'X') && (nvs_password[1] == '\0'))
                             {
-                                //ESP_LOGI("NVS", "Stored password was X, indicating no password");
+                                // ESP_LOGI("NVS", "Stored password was X, indicating no password");
                                 nvs_password[0] = '\0';
                             }
                             init_wifi_sta(nvs_ssid, nvs_password, nvs_gateway, nvs_static, nvs_netmask);
@@ -2532,7 +2568,7 @@ static void wifi_init_from_nvs(void)
 
         httpd_handle_t server = start_http_webserver(1); // Begin the http Webserver (1 = Initialization Version)
 
-        //ESP_LOGI("WEBSERVER", "HTTP server started. Open a browser and connect to the ESP32 access point to enter WiFi credentials.");
+        // ESP_LOGI("WEBSERVER", "HTTP server started. Open a browser and connect to the ESP32 access point to enter WiFi credentials.");
 
         // Wait for the user to enter WiFi credentials and reboot the ESP32
         while (1)
@@ -2587,10 +2623,10 @@ static void IRAM_ATTR sync_timer_callback(void *arg)
         for (int i = 0; i < 8; i++)
         {
             selects[i] = 0x0F;
-            enable_control[i] = false;
+            controller_enable[i] = false;
         }
 
-        enabled_controllers = 0b11111111;
+        controller_enable_bitmask = 0b11111111;
         sp_a = 0x00;
         sp_b = 0x00;
         sp_x = 0x00;
@@ -2602,8 +2638,7 @@ static void IRAM_ATTR sync_timer_callback(void *arg)
         sp_rt = 0x00;
         sp_priority_byte = 0x00;
 
-        spi_current_series = 0;
-        spi_series_count = 0;
+        spi_fsm_state = STATE_IDLE;
     }
 }
 
@@ -2672,10 +2707,10 @@ static void IRAM_ATTR post_timeout_timer_callback(void *arg)
     {
         if (control_keys[i] == 0)
         {
-            enable_control[i] = false;
+            controller_enable[i] = false;
             if (i < 8) // Only For Virtual and Physical Controllers
             {
-                enabled_controllers |= (0b00000001 << ((i + 4) % 8));
+                controller_enable_bitmask |= (0b00000001 << ((i + 4) % 8));
             }
         }
     }
@@ -2723,11 +2758,14 @@ static void IRAM_ATTR wifi_led_timer_callback(void *arg)
 static void IRAM_ATTR reset_isr_handler(void *arg)
 {
     (void)arg;
-    if (gpio_get_level(GPIO_RESET) == 0) { // Reset Pressed
+    if (gpio_get_level(GPIO_RESET) == 0)
+    { // Reset Pressed
         esp_timer_stop(wifi_led_timer);
         esp_timer_start_periodic(wifi_led_timer, 0.1 * 1000000); // 0.1 Second Interval
-        esp_timer_start_once(reset_button_timer, 5 * 1000000); // 5 Second Interval
-    } else { // Reset Released Before 5 Second Timer
+        esp_timer_start_once(reset_button_timer, 5 * 1000000);   // 5 Second Interval
+    }
+    else
+    { // Reset Released Before 5 Second Timer
         esp_timer_stop(reset_button_timer);
         esp_restart();
     }
