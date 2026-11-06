@@ -174,6 +174,9 @@ uint8_t dpi_left[4] = {false, false, false, false};
 uint8_t dpi_right[4] = {false, false, false, false};
 uint8_t dpi_rt[4] = {false, false, false, false};
 
+// Global Webserver Definition
+httpd_handle_t web_server;
+
 // Variables and Structs for WiFi Event Management
 EventGroupHandle_t wifi_event_group;
 uint8_t WIFI_CONNECTED_BIT = BIT0;
@@ -1690,6 +1693,17 @@ static inline void usb_process_rx_data()
     {
         share_mode = usb_rx_bytes[1] ? 1 : 0;
         is16sel_mode = usb_rx_bytes[2] ? 1 : 0;
+        if (!usb_rx_bytes[3])
+        {
+            ESP_ERROR_CHECK(httpd_stop(web_server));
+
+            ESP_ERROR_CHECK(esp_wifi_stop());
+            ESP_ERROR_CHECK(esp_wifi_deinit());
+
+            esp_timer_stop(wifi_led_timer);
+            wifi_led_status = false;
+            gpio_set_level(GPIO_WIFI_LED, wifi_led_status);
+        }
     }
     else if (usb_rx_bytes[0] == 254) // Process Player Bytes
     {
@@ -2649,7 +2663,7 @@ static void wifi_init_from_nvs(void)
                                 nvs_password[0] = '\0';
                             }
                             init_wifi_sta(nvs_ssid, nvs_password, nvs_gateway, nvs_static, nvs_netmask);
-                            start_http_webserver(0); // Begin the http Webserver (0 = Normal Version)
+                            web_server = start_http_webserver(0); // Begin the http Webserver (0 = Normal Version)
                         }
                     }
                     else
@@ -2679,7 +2693,7 @@ static void wifi_init_from_nvs(void)
 
         init_wifi_ap(); // Create a WiFi access point
 
-        httpd_handle_t server = start_http_webserver(1); // Begin the http Webserver (1 = Initialization Version)
+        web_server = start_http_webserver(1); // Begin the http Webserver (1 = Initialization Version)
 
         // Wait for the user to enter WiFi credentials and reboot the ESP32
         while (true)
@@ -2696,7 +2710,7 @@ static void wifi_init_from_nvs(void)
                 if (ret == ESP_OK)
                 {
                     // ESP_LOGI("WIFI", "WiFi credentials entered by user. Rebooting...");
-                    httpd_stop(server);              // Stop the HTTP server before rebooting
+                    httpd_stop(web_server);          // Stop the HTTP server before rebooting
                     vTaskDelay(pdMS_TO_TICKS(1000)); // Delay to allow the response to be sent before rebooting
                     esp_restart();                   // Reboot the ESP32
                 }
@@ -2846,8 +2860,8 @@ static void IRAM_ATTR reset_isr_handler(void *arg)
     if (gpio_get_level(GPIO_RESET) == 0)
     { // Reset Pressed
         esp_timer_stop(wifi_led_timer);
-        esp_timer_start_periodic(wifi_led_timer, 100000); // 0.1 Second Interval
-        esp_timer_start_once(reset_button_timer, 5000000);   // 5 Second Interval
+        esp_timer_start_periodic(wifi_led_timer, 100000);  // 0.1 Second Interval
+        esp_timer_start_once(reset_button_timer, 5000000); // 5 Second Interval
     }
     else
     { // Reset Released Before 5 Second Timer
@@ -2979,12 +2993,6 @@ void app_main(void)
     // Initialize the SPI Task
     xTaskCreate(&spi_task, "SPI_TASK", 4096, NULL, 1, NULL);
 
-    // Initialize the WiFi event group
-    wifi_event_group = xEventGroupCreate();
-
-    // Initialize NVS and check/configure WiFi
-    wifi_init_from_nvs();
-
     // Initialize Controller Timeout Timer (Must Be After wifi_init_from_nvs)
     const esp_timer_create_args_t timeout_timer_args = {
         .callback = &timeout_timer_callback,
@@ -3002,4 +3010,10 @@ void app_main(void)
 
     // Initialize the USB Task
     xTaskCreate(&usb_task, "USB_TASK", 4096, NULL, 10, NULL);
+
+    // Initialize the WiFi event group
+    wifi_event_group = xEventGroupCreate();
+
+    // Initialize NVS and check/configure WiFi
+    wifi_init_from_nvs();
 }
